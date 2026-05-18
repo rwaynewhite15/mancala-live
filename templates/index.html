@@ -648,11 +648,24 @@ socket.on('joined', data => {
   S.roomId     = data.room_id;
   S.oppName    = data.opponent || (data.mode === 'ai' ? `AI (${data.difficulty})` : 'Opponent');
 
+  // Reset state for new game/room
+  prevBoard          = null;
+  latestState        = null;
+  isAnimating        = false;
+  animQueue          = [];
+  lastGameSummarized = -1;
+  document.getElementById('my-record').textContent  = '';
+  document.getElementById('opp-record').textContent = '';
+  document.getElementById('chat-messages').innerHTML = '';
+
   document.getElementById('my-name').textContent  = S.myName || 'You';
   document.getElementById('opp-name').textContent = S.oppName;
   document.getElementById('gh-room').textContent  = `Room: ${S.roomId}`;
   document.getElementById('gh-mode').textContent  =
     data.mode === 'ai' ? `vs AI (${data.difficulty})` : 'vs Player';
+
+  // Show chat input only in PvP
+  document.getElementById('chat-input-row').style.display = data.mode === 'ai' ? 'none' : 'flex';
 
   buildBoard();
   if (data.mode !== 'pvp' || data.opponent) {
