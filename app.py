@@ -2,12 +2,10 @@
 Mancala - Web Server (Flask-SocketIO)
 Board indices: 0-5 (P1 pits), 6 (P1 store), 7-12 (P2 pits), 13 (P2 store).
 """
-import eventlet
-eventlet.monkey_patch()
-
 import os
 import random
 import string
+import time
 
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, join_room, emit
@@ -166,7 +164,7 @@ def get_ai_move(game, difficulty):
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "mancala-dev-secret")
-socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
+socketio = SocketIO(app, async_mode="threading", cors_allowed_origins="*")
 
 # room_id -> { game, mode, difficulty, players: [{sid, player_id, name}], started }
 rooms = {}
@@ -191,7 +189,7 @@ def _broadcast_state(room_id):
 
 
 def _ai_task(room_id):
-    socketio.sleep(0.8)
+    time.sleep(0.8)
     room = rooms.get(room_id)
     if not room:
         return
@@ -204,7 +202,7 @@ def _ai_task(room_id):
         _broadcast_state(room_id)
         if game.game_over or game.current_player != 1:
             break
-        socketio.sleep(0.5)
+        time.sleep(0.5)
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -354,4 +352,4 @@ def handle_disconnect():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, host="0.0.0.0", port=port, debug=False)
+    socketio.run(app, host="0.0.0.0", port=port, debug=False, allow_unsafe_werkzeug=True)
