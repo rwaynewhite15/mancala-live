@@ -324,6 +324,7 @@ let isAnimating         = false;
 let animQueue           = [];   // { boardBefore, lastMove, finalState }
 let latestState         = null; // always the most recent state from server
 let lastGameSummarized  = -1;   // games_played value of last chat summary
+let animationVersion    = 0;
 
 // ── Pit index helpers ──────────────────────────────────────────────────────
 function myPitIndices()  {
@@ -348,6 +349,12 @@ function pitEl(boardIdx) {
   const oi = op.indexOf(boardIdx);
   if (oi !== -1) return document.getElementById(`opp-pit-${oi+1}`);
   return null;
+}
+
+function cancelAnimations() {
+  animationVersion++;
+  isAnimating = false;
+  animQueue = [];
 }
 
 // ── Screen management ──────────────────────────────────────────────────────
@@ -569,7 +576,9 @@ function distributionPath(board, player, pit) {
 }
 
 async function animateMove(boardBefore, lastMove, finalState) {
+  const version = animationVersion;
   const { player, pit, captured } = lastMove;
+  const isStillCurrentAnimation = () => version === animationVersion;
 
   const board = [...boardBefore];
   const path  = distributionPath(board, player, pit);
@@ -578,6 +587,7 @@ async function animateMove(boardBefore, lastMove, finalState) {
   board[pit] = 0;
   applyBoard(board, null, null);
   await sleep(200);
+  if (!isStillCurrentAnimation()) return;
 
   // Drop one stone at a time
   for (const dest of path) {
@@ -597,6 +607,7 @@ async function animateMove(boardBefore, lastMove, finalState) {
       await sleep(300);
       storeEl.style.borderColor = '';
     }
+    if (!isStillCurrentAnimation()) return;
   }
 
   // If a capture happened, flash both pits then clear them
@@ -608,9 +619,11 @@ async function animateMove(boardBefore, lastMove, finalState) {
     captureEls.forEach(el => el.classList.add('capture-flash'));
     await sleep(500);
     captureEls.forEach(el => el.classList.remove('capture-flash'));
+    if (!isStillCurrentAnimation()) return;
   }
 
   await sleep(150);
+  if (!isStillCurrentAnimation()) return;
   renderState(finalState);
 
   // Play next queued animation, if any
@@ -660,8 +673,7 @@ socket.on('joined', data => {
   // Reset state for new game/room
   prevBoard          = null;
   latestState        = null;
-  isAnimating        = false;
-  animQueue          = [];
+  cancelAnimations();
   lastGameSummarized = -1;
   document.getElementById('my-record').textContent  = '';
   document.getElementById('opp-record').textContent = '';
@@ -700,10 +712,13 @@ socket.on('state', state => {
 
   // Detect rematch start: game-over → new game with no last_move
   if (wasGameOver && !state.game_over && !state.last_move) {
+    cancelAnimations();
     const fp = state.current_player;
     const whoFirst = fp === S.playerId ? 'You go first'
       : (S.mode === 'ai' ? 'AI goes first' : `${S.oppName || 'Opponent'} goes first`);
     addChat('system', `Rematch! ${whoFirst}.`);
+    renderState(state);
+    return;
   }
 
   // Show game-over immediately, independent of animation pipeline
