@@ -411,6 +411,7 @@ function copyCode() {
   });
 }
 function goToMainMenu() {
+  cancelAnimations();
   document.getElementById('game-over-overlay').classList.remove('show');
   showScreen('lobby');
 }
@@ -696,7 +697,12 @@ socket.on('waiting', data => {
   showScreen('waiting');
 });
 
+function onGameScreen() {
+  return document.getElementById('screen-game').classList.contains('active');
+}
+
 socket.on('new_game', data => {
+  if (!onGameScreen()) return;
   cancelAnimations();
   prevBoard = null;
   document.getElementById('game-over-overlay').classList.remove('show');
@@ -707,6 +713,7 @@ socket.on('new_game', data => {
 });
 
 socket.on('state', state => {
+  if (!onGameScreen()) return;
   if (typeof state.state_seq === 'number') {
     if (state.state_seq <= latestStateSeq) return;
     latestStateSeq = state.state_seq;
