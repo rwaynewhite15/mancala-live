@@ -404,9 +404,13 @@ def handle_rematch():
     room["next_first_player"] = 1 - fp
     room["game"] = MancalaGame(first_player=fp)
     room["score_recorded"] = False
+    # Invalidate old AI task BEFORE broadcasting so it can't sneak in a move
+    # on the new game object between the broadcast and the new task starting.
+    room["ai_task_token"] = room.get("ai_task_token", 0) + 1
     _broadcast_state(room_id)
     if room["mode"] == "ai" and room["game"].current_player == 1:
-        _start_ai_task(room_id)
+        token = room["ai_task_token"]
+        socketio.start_background_task(_ai_task, room_id, token)
 
 
 @socketio.on("disconnect")
