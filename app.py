@@ -205,6 +205,7 @@ def _broadcast_state(room_id):
         return
     if room["game"].game_over:
         _record_score(room)
+    room["state_seq"] += 1
     state = room["game"].state()
     for p in room["players"]:
         socketio.emit("state", {
@@ -212,6 +213,7 @@ def _broadcast_state(room_id):
             "your_player": p["player_id"],
             "scores": room["scores"],
             "games_played": room["games_played"],
+            "state_seq": room["state_seq"],
         }, to=p["sid"])
 
 
@@ -272,6 +274,7 @@ def handle_create_room(data):
         "games_played": 0,
         "score_recorded": False,
         "ai_task_token": 0,
+        "state_seq": 0,
         "next_first_player": first_player,  # used when game actually starts; alternates each rematch
     }
     sid_to_room[sid] = room_id
