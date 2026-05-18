@@ -9,19 +9,26 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg:        #1a0f00;
-    --surface:   #2e1a00;
-    --board:     #7a4a1e;
-    --pit:       #5c3310;
-    --pit-hover: #7a4a20;
-    --store:     #4a2a0c;
-    --gold:      #f0c040;
-    --orange:    #e07030;
-    --cream:     #fdf0d0;
-    --muted:     #b09070;
-    --valid:     #f0c040;
-    --danger:    #e05030;
-    --radius:    12px;
+    --bg:      #1a0f00;
+    --surface: #2e1a00;
+    --board:   #7a4a1e;
+    --pit:     #5c3310;
+    --pit-h:   #7a4a20;
+    --store:   #4a2a0c;
+    --gold:    #f0c040;
+    --orange:  #e07030;
+    --cream:   #fdf0d0;
+    --muted:   #b09070;
+    --danger:  #e05030;
+    --radius:  12px;
+
+    /* Board sizing — scales down on narrow screens */
+    --pit-size:  min(62px, calc((100vw - 148px) / 6.4));
+    --store-w:   min(64px, calc((100vw - 148px) / 8));
+    --store-h:   calc(var(--pit-size) * 2.35);
+    --pit-gap:   min(8px, calc((100vw - 148px) / 50));
+    --pit-font:  calc(var(--pit-size) * 0.45);
+    --store-font:calc(var(--pit-size) * 0.38);
   }
 
   body {
@@ -36,319 +43,141 @@
 
   h1 { font-size: 2.4rem; color: var(--gold); letter-spacing: 4px; text-transform: uppercase; }
   h2 { font-size: 1.4rem; color: var(--gold); margin-bottom: 12px; }
-  h3 { font-size: 1rem; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+  h3 { font-size: .95rem; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
 
-  header {
-    width: 100%;
-    text-align: center;
-    padding: 20px 0 10px;
-    border-bottom: 1px solid #3a2000;
-  }
+  header { width: 100%; text-align: center; padding: 18px 0 8px; border-bottom: 1px solid #3a2000; }
 
-  #app {
-    width: 100%;
-    max-width: 780px;
-    padding: 20px 16px 40px;
-  }
+  #app { width: 100%; max-width: 780px; padding: 16px 14px 40px; }
 
-  /* ── Screens ── */
   .screen { display: none; }
   .screen.active { display: block; }
 
-  /* ── Cards ── */
-  .card {
-    background: var(--surface);
-    border: 1px solid #4a2a00;
-    border-radius: var(--radius);
-    padding: 24px;
-    margin-bottom: 16px;
-  }
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid #4a2a00; border-radius: var(--radius); padding: 22px; margin-bottom: 14px; }
 
-  /* ── Inputs ── */
+  /* Inputs */
   input[type="text"] {
-    width: 100%;
-    background: #3a2000;
-    border: 1px solid #5a3a10;
-    border-radius: 8px;
-    color: var(--cream);
-    font-size: 1rem;
-    padding: 10px 14px;
-    margin-bottom: 14px;
-    outline: none;
+    width: 100%; background: #3a2000; border: 1px solid #5a3a10;
+    border-radius: 8px; color: var(--cream); font-size: 1rem;
+    padding: 10px 14px; margin-bottom: 14px; outline: none;
   }
   input[type="text"]:focus { border-color: var(--gold); }
   input[type="text"]::placeholder { color: var(--muted); }
 
-  /* ── Buttons ── */
-  .btn {
-    display: inline-block;
-    padding: 10px 24px;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: filter 0.15s, transform 0.1s;
-  }
-  .btn:hover { filter: brightness(1.15); }
-  .btn:active { transform: scale(0.97); }
-  .btn-primary { background: var(--orange); color: #fff; }
-  .btn-secondary { background: #4a3010; color: var(--cream); }
-  .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
-
-  /* ── Mode toggle ── */
-  .mode-toggle { display: flex; gap: 0; margin-bottom: 16px; border-radius: 8px; overflow: hidden; border: 1px solid #5a3a10; }
-  .mode-btn {
-    flex: 1; padding: 10px; border: none; background: #3a2000; color: var(--muted);
-    font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.15s, color 0.15s;
-  }
-  .mode-btn.active { background: var(--orange); color: #fff; }
-
-  /* ── Difficulty select ── */
   select {
-    width: 100%;
-    background: #3a2000;
-    border: 1px solid #5a3a10;
-    border-radius: 8px;
-    color: var(--cream);
-    font-size: 1rem;
-    padding: 10px 14px;
-    margin-bottom: 14px;
-    outline: none;
-    cursor: pointer;
+    width: 100%; background: #3a2000; border: 1px solid #5a3a10;
+    border-radius: 8px; color: var(--cream); font-size: 1rem;
+    padding: 10px 14px; margin-bottom: 14px; outline: none; cursor: pointer;
   }
   select:focus { border-color: var(--gold); }
 
-  /* ── Room code ── */
-  .room-code {
-    font-size: 2.5rem;
-    font-weight: 800;
-    letter-spacing: 8px;
-    color: var(--gold);
-    text-align: center;
-    padding: 16px;
-    background: #3a2000;
-    border-radius: 8px;
-    margin: 12px 0;
-    font-family: 'Courier New', monospace;
-  }
+  /* Buttons */
+  .btn { display: inline-block; padding: 10px 24px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: filter .15s, transform .1s; }
+  .btn:hover { filter: brightness(1.15); }
+  .btn:active { transform: scale(.97); }
+  .btn-primary  { background: var(--orange); color: #fff; }
+  .btn-secondary{ background: #4a3010; color: var(--cream); }
 
-  /* ── Error banner ── */
-  #error-banner {
-    display: none;
-    background: #5a1010;
-    border: 1px solid var(--danger);
-    border-radius: 8px;
-    color: #ffaaaa;
-    padding: 10px 16px;
-    margin-bottom: 12px;
-    font-size: 0.95rem;
-  }
+  /* Toggle tabs */
+  .toggle { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid #5a3a10; margin-bottom: 14px; }
+  .toggle-btn { flex: 1; padding: 10px; border: none; background: #3a2000; color: var(--muted); font-size: .95rem; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; }
+  .toggle-btn.active { background: var(--orange); color: #fff; }
 
-  /* ── Game header ── */
-  #game-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #3a2000;
-    font-size: 0.85rem;
-    color: var(--muted);
-  }
+  /* Error */
+  #error-banner { display: none; background: #5a1010; border: 1px solid var(--danger); border-radius: 8px; color: #ffaaaa; padding: 10px 16px; margin-bottom: 12px; font-size: .95rem; }
 
-  /* ── Board ── */
-  #board-wrapper {
-    background: var(--board);
-    border-radius: 20px;
-    padding: 16px;
-    box-shadow: 0 8px 32px #0008;
-    margin-bottom: 14px;
-  }
+  /* Room code */
+  .room-code { font-size: 2.4rem; font-weight: 800; letter-spacing: 8px; color: var(--gold); text-align: center; padding: 14px; background: #3a2000; border-radius: 8px; margin: 10px 0; font-family: 'Courier New', monospace; }
 
-  .player-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px 8px;
-    font-size: 0.9rem;
-  }
+  /* Spinner */
+  .spinner { width: 34px; height: 34px; border: 4px solid #4a2a00; border-top-color: var(--gold); border-radius: 50%; animation: spin .9s linear infinite; margin: 12px auto; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Game ── */
+  #game-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #3a2000; font-size: .82rem; color: var(--muted); }
+
+  /* Board wrapper */
+  #board-wrapper { background: var(--board); border-radius: 18px; padding: 12px 10px; box-shadow: 0 8px 32px #0008; margin-bottom: 12px; }
+
+  .player-bar { display: flex; justify-content: space-between; align-items: center; padding: 3px 6px; font-size: .88rem; }
   .player-bar .name { font-weight: 600; }
-  .player-bar .score { color: var(--gold); font-weight: 700; font-size: 1.1rem; }
+  .player-bar .score { color: var(--gold); font-weight: 700; font-size: 1.05rem; }
   .player-bar.active-player .name { color: var(--gold); }
 
-  #board {
-    display: grid;
-    grid-template-columns: 64px 1fr 64px;
-    gap: 8px;
-    align-items: center;
-    margin: 8px 0;
-  }
+  #board { display: grid; grid-template-columns: var(--store-w) 1fr var(--store-w); gap: var(--pit-gap); align-items: center; margin: 6px 0; }
 
   .store {
     background: var(--store);
     border-radius: 40px;
-    height: 148px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
+    width: var(--store-w);
+    height: var(--store-h);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     border: 2px solid #3a2000;
   }
-  .store .stone-count {
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: var(--gold);
-  }
-  .store .store-label {
-    font-size: 0.65rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
+  .store .stone-count { font-size: var(--store-font); font-weight: 700; color: var(--gold); }
+  .store .store-label { font-size: .6rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
 
-  #pits-area {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .pit-row {
-    display: flex;
-    gap: 6px;
-    justify-content: center;
-  }
+  #pits-area { display: flex; flex-direction: column; gap: var(--pit-gap); }
+  .pit-row { display: flex; gap: var(--pit-gap); justify-content: center; }
 
   .pit {
-    width: 62px;
-    height: 62px;
+    width: var(--pit-size); height: var(--pit-size);
     border-radius: 50%;
     background: var(--pit);
     border: 2px solid #3a2000;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
     user-select: none;
-    transition: background 0.15s, border-color 0.15s, transform 0.1s, box-shadow 0.15s;
+    transition: background .15s, border-color .15s, transform .12s, box-shadow .15s;
+    flex-shrink: 0;
   }
-  .pit .stone-count { font-size: 1.2rem; font-weight: 700; }
-  .pit .pit-label { font-size: 0.6rem; color: var(--muted); }
+  .pit .stone-count { font-size: var(--pit-font); font-weight: 700; line-height: 1; }
+  .pit .pit-label   { font-size: calc(var(--pit-size) * 0.16); color: var(--muted); line-height: 1; }
 
-  .pit.my-pit { cursor: pointer; }
-  .pit.my-pit:hover { background: var(--pit-hover); }
-  .pit.valid { border-color: var(--valid); box-shadow: 0 0 10px #f0c04066; }
-  .pit.valid:hover { transform: scale(1.08); box-shadow: 0 0 18px #f0c040aa; }
-  .pit.empty { opacity: 0.45; }
-  .pit.disabled { cursor: default; opacity: 0.6; }
-  .pit.last-moved { border-color: var(--orange); box-shadow: 0 0 10px #e0703066; }
+  .pit.my-pit  { cursor: pointer; }
+  .pit.my-pit:hover:not(.disabled) { background: var(--pit-h); }
+  .pit.valid   { border-color: var(--gold); box-shadow: 0 0 9px #f0c04060; }
+  .pit.valid:hover { transform: scale(1.08); box-shadow: 0 0 16px #f0c040a0; }
+  .pit.empty   { opacity: .45; }
+  .pit.disabled{ cursor: default; }
+  .pit.last-moved { border-color: var(--orange); }
 
-  /* ── Status bar ── */
-  #status-bar {
-    text-align: center;
-    padding: 10px;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--cream);
-    background: var(--surface);
-    border-radius: 8px;
-    margin-bottom: 12px;
-    min-height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  /* Landing animation (stone arriving) */
+  .pit.landing {
+    border-color: var(--gold);
+    box-shadow: 0 0 18px var(--gold);
+    transform: scale(1.12);
   }
+  /* Capture flash */
+  .pit.capture-flash {
+    border-color: var(--danger);
+    box-shadow: 0 0 18px var(--danger);
+    transform: scale(1.1);
+    background: #5a1505;
+  }
+
+  /* Status */
+  #status-bar { text-align: center; padding: 9px; font-size: .95rem; font-weight: 600; color: var(--cream); background: var(--surface); border-radius: 8px; margin-bottom: 10px; min-height: 38px; display: flex; align-items: center; justify-content: center; }
   #status-bar.your-turn { color: var(--gold); }
 
-  /* ── Chat ── */
-  #chat-area {
-    background: var(--surface);
-    border: 1px solid #4a2a00;
-    border-radius: var(--radius);
-    overflow: hidden;
-    margin-bottom: 12px;
-  }
-  #chat-messages {
-    height: 120px;
-    overflow-y: auto;
-    padding: 10px 14px;
-    font-size: 0.88rem;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
+  /* Chat */
+  #chat-area { background: var(--surface); border: 1px solid #4a2a00; border-radius: var(--radius); overflow: hidden; margin-bottom: 10px; }
+  #chat-messages { height: 100px; overflow-y: auto; padding: 8px 12px; font-size: .86rem; display: flex; flex-direction: column; gap: 3px; }
   .chat-msg { color: var(--cream); }
   .chat-msg .chat-who { color: var(--orange); font-weight: 600; }
   .chat-msg.system { color: var(--muted); font-style: italic; }
-  #chat-input-row {
-    display: flex;
-    border-top: 1px solid #4a2a00;
-  }
-  #chat-input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    margin: 0;
-    padding: 10px 14px;
-    font-size: 0.9rem;
-  }
-  #chat-send {
-    padding: 0 16px;
-    background: var(--orange);
-    border: none;
-    color: #fff;
-    font-weight: 600;
-    cursor: pointer;
-    font-size: 0.9rem;
-  }
+  #chat-input-row { display: flex; border-top: 1px solid #4a2a00; }
+  #chat-input { flex: 1; background: transparent; border: none; border-radius: 0; margin: 0; padding: 9px 12px; font-size: .88rem; color: var(--cream); outline: none; }
+  #chat-send { padding: 0 14px; background: var(--orange); border: none; color: #fff; font-weight: 600; cursor: pointer; font-size: .88rem; }
   #chat-send:hover { filter: brightness(1.15); }
 
-  /* ── Game over overlay ── */
-  #game-over-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: #0009;
-    z-index: 100;
-    align-items: center;
-    justify-content: center;
-  }
+  /* Game over */
+  #game-over-overlay { display: none; position: fixed; inset: 0; background: #0009; z-index: 100; align-items: center; justify-content: center; }
   #game-over-overlay.show { display: flex; }
-  #game-over-box {
-    background: var(--surface);
-    border: 2px solid var(--gold);
-    border-radius: 20px;
-    padding: 36px 40px;
-    text-align: center;
-    max-width: 360px;
-    width: 90%;
-  }
-  #game-over-title { font-size: 2rem; margin-bottom: 8px; }
-  #game-over-scores { color: var(--muted); margin-bottom: 16px; font-size: 1.1rem; }
-
-  /* ── Waiting spinner ── */
-  .spinner {
-    width: 36px; height: 36px;
-    border: 4px solid #4a2a00;
-    border-top-color: var(--gold);
-    border-radius: 50%;
-    animation: spin 0.9s linear infinite;
-    margin: 12px auto;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  #game-over-box { background: var(--surface); border: 2px solid var(--gold); border-radius: 20px; padding: 32px 36px; text-align: center; max-width: 340px; width: 90%; }
+  #game-over-title { font-size: 1.9rem; color: var(--gold); margin-bottom: 8px; }
+  #game-over-scores { color: var(--muted); font-size: 1.05rem; }
 
   .hidden { display: none !important; }
-
-  @media (max-width: 500px) {
-    .pit { width: 48px; height: 48px; }
-    .pit .stone-count { font-size: 1rem; }
-    .store { width: 50px; height: 120px; }
-    .store .stone-count { font-size: 1.3rem; }
-    #board { grid-template-columns: 52px 1fr 52px; }
-  }
 </style>
 </head>
 <body>
@@ -364,18 +193,17 @@
       <div id="error-banner"></div>
       <input type="text" id="name-input" placeholder="Your name" maxlength="20" autocomplete="off">
 
-      <h3>How do you want to play?</h3>
-      <div class="mode-toggle">
-        <button class="mode-btn active" id="tab-create" onclick="showTab('create')">Create Room</button>
-        <button class="mode-btn" id="tab-join" onclick="showTab('join')">Join Room</button>
+      <h3>How to play?</h3>
+      <div class="toggle">
+        <button class="toggle-btn active" id="tab-create" onclick="showTab('create')">Create Room</button>
+        <button class="toggle-btn" id="tab-join"   onclick="showTab('join')">Join Room</button>
       </div>
 
-      <!-- Create panel -->
       <div id="panel-create">
-        <h3>Game mode</h3>
-        <div class="mode-toggle" style="margin-bottom:14px">
-          <button class="mode-btn active" id="mode-pvp" onclick="selectMode('pvp')">vs Player</button>
-          <button class="mode-btn" id="mode-ai" onclick="selectMode('ai')">vs AI</button>
+        <h3>Mode</h3>
+        <div class="toggle">
+          <button class="toggle-btn active" id="mode-pvp" onclick="selectMode('pvp')">vs Player</button>
+          <button class="toggle-btn"        id="mode-ai"  onclick="selectMode('ai')">vs AI</button>
         </div>
         <div id="difficulty-row" class="hidden">
           <h3>Difficulty</h3>
@@ -388,10 +216,9 @@
         <button class="btn btn-primary" onclick="createRoom()">Create Game</button>
       </div>
 
-      <!-- Join panel -->
       <div id="panel-join" class="hidden">
-        <input type="text" id="room-code-input" placeholder="Room code (6 letters)" maxlength="6"
-               autocomplete="off" style="text-transform:uppercase;letter-spacing:4px;font-size:1.2rem">
+        <input type="text" id="room-code-input" placeholder="Room code (6 chars)" maxlength="6"
+               autocomplete="off" style="text-transform:uppercase;letter-spacing:4px;font-size:1.15rem">
         <button class="btn btn-primary" onclick="joinRoom()">Join Game</button>
       </div>
     </div>
@@ -403,9 +230,9 @@
       <h2>Room Created!</h2>
       <p style="color:var(--muted);margin-bottom:4px">Share this code with your opponent:</p>
       <div class="room-code" id="waiting-code">------</div>
-      <button class="btn btn-secondary" style="margin-bottom:16px" onclick="copyCode()">Copy Code</button>
+      <button class="btn btn-secondary" style="margin-bottom:14px" onclick="copyCode()">Copy Code</button>
       <div class="spinner"></div>
-      <p style="color:var(--muted);font-size:0.9rem">Waiting for opponent to join...</p>
+      <p style="color:var(--muted);font-size:.9rem">Waiting for opponent...</p>
     </div>
   </div>
 
@@ -419,9 +246,8 @@
     <div id="board-wrapper">
       <div class="player-bar" id="opp-bar">
         <span class="name" id="opp-name">Opponent</span>
-        <span class="score" id="opp-store-score">0</span>
+        <span class="score" id="opp-score">0</span>
       </div>
-
       <div id="board">
         <div class="store" id="opp-store-el">
           <span class="stone-count" id="opp-store-count">0</span>
@@ -436,10 +262,9 @@
           <span class="store-label">Store</span>
         </div>
       </div>
-
       <div class="player-bar" id="my-bar">
         <span class="name" id="my-name">You</span>
-        <span class="score" id="my-store-score">0</span>
+        <span class="score" id="my-score">0</span>
       </div>
     </div>
 
@@ -456,85 +281,89 @@
 
 </div>
 
-<!-- ── GAME OVER OVERLAY ── -->
+<!-- Game over overlay -->
 <div id="game-over-overlay">
   <div id="game-over-box">
-    <h2 id="game-over-title">Game Over</h2>
-    <p id="game-over-scores"></p>
-    <button class="btn btn-primary" style="margin-top:16px" onclick="playAgain()">Play Again</button>
+    <div id="game-over-title">Game Over</div>
+    <div id="game-over-scores"></div>
+    <button class="btn btn-primary" style="margin-top:18px" onclick="playAgain()">Play Again</button>
   </div>
 </div>
 
 <script>
 const socket = io();
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// ── App state ────────────────────────────────────────────────────────────────
+// ── Constants (mirror server) ──────────────────────────────────────────────
+const P1_PITS  = [0,1,2,3,4,5];
+const P1_STORE = 6;
+const P2_PITS  = [7,8,9,10,11,12];
+const P2_STORE = 13;
+const OPPOSITE = {0:12,1:11,2:10,3:9,4:8,5:7, 7:5,8:4,9:3,10:2,11:1,12:0};
+const PLAYER_PITS  = {0: P1_PITS,  1: P2_PITS};
+const PLAYER_STORE = {0: P1_STORE, 1: P2_STORE};
+
+// ── App state ──────────────────────────────────────────────────────────────
 const S = {
-  playerId: null,
-  mode: null,
-  difficulty: null,
-  roomId: null,
-  myName: null,
-  oppName: null,
-  lastState: null,
+  playerId: null, mode: null, difficulty: null,
+  roomId: null, myName: null, oppName: null,
   selectedMode: 'pvp',
 };
+let prevBoard    = null;
+let isAnimating  = false;
+let animToken    = 0;
 
-// ── Pit index helpers ─────────────────────────────────────────────────────────
-// My pits shown left-to-right (label 1..6 = board indices)
-function myPitIndices() {
-  return S.playerId === 0
-    ? [0, 1, 2, 3, 4, 5]
-    : [12, 11, 10, 9, 8, 7];
+// ── Pit index helpers ──────────────────────────────────────────────────────
+function myPitIndices()  {
+  return S.playerId === 0 ? [0,1,2,3,4,5] : [7,8,9,10,11,12];
 }
-// Opp pits shown left-to-right (mirrored so they face each other)
 function oppPitIndices() {
-  return S.playerId === 0
-    ? [12, 11, 10, 9, 8, 7]
-    : [5, 4, 3, 2, 1, 0];
+  return S.playerId === 0 ? [12,11,10,9,8,7] : [5,4,3,2,1,0];
 }
-function myStoreIdx()  { return S.playerId === 0 ? 6 : 13; }
-function oppStoreIdx() { return S.playerId === 0 ? 13 : 6; }
+function myStoreIdx()  { return S.playerId === 0 ? P1_STORE : P2_STORE; }
+function oppStoreIdx() { return S.playerId === 0 ? P2_STORE : P1_STORE; }
 
-// Convert pit label 1-6 to board index
 function labelToBoardIdx(label) {
-  return S.playerId === 0 ? label - 1 : 13 - label;
+  return S.playerId === 0 ? label - 1 : label + 6;
 }
 
-// ── Screen management ─────────────────────────────────────────────────────────
+// ── DOM helpers ────────────────────────────────────────────────────────────
+// Returns the pit DOM element for a given board index, or null
+function pitEl(boardIdx) {
+  const mp = myPitIndices(), op = oppPitIndices();
+  const mi = mp.indexOf(boardIdx);
+  if (mi !== -1) return document.getElementById(`my-pit-${mi+1}`);
+  const oi = op.indexOf(boardIdx);
+  if (oi !== -1) return document.getElementById(`opp-pit-${oi+1}`);
+  return null;
+}
+
+// ── Screen management ──────────────────────────────────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
 }
-
 function showTab(tab) {
-  document.getElementById('tab-create').classList.toggle('active', tab === 'create');
-  document.getElementById('tab-join').classList.toggle('active', tab === 'join');
-  document.getElementById('panel-create').classList.toggle('hidden', tab !== 'create');
-  document.getElementById('panel-join').classList.toggle('hidden', tab !== 'join');
+  ['create','join'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('panel-'+t).classList.toggle('hidden', t!==tab);
+  });
   clearError();
 }
-
-function selectMode(mode) {
-  S.selectedMode = mode;
-  document.getElementById('mode-pvp').classList.toggle('active', mode === 'pvp');
-  document.getElementById('mode-ai').classList.toggle('active', mode === 'ai');
-  document.getElementById('difficulty-row').classList.toggle('hidden', mode !== 'ai');
+function selectMode(m) {
+  S.selectedMode = m;
+  document.getElementById('mode-pvp').classList.toggle('active', m==='pvp');
+  document.getElementById('mode-ai').classList.toggle('active',  m==='ai');
+  document.getElementById('difficulty-row').classList.toggle('hidden', m!=='ai');
 }
-
 function showError(msg) {
   const el = document.getElementById('error-banner');
-  el.textContent = msg;
-  el.style.display = 'block';
+  el.textContent = msg; el.style.display = 'block';
 }
-function clearError() {
-  document.getElementById('error-banner').style.display = 'none';
-}
+function clearError() { document.getElementById('error-banner').style.display = 'none'; }
 
-// ── Lobby actions ─────────────────────────────────────────────────────────────
-function getName() {
-  return document.getElementById('name-input').value.trim() || 'Player';
-}
+// ── Lobby actions ──────────────────────────────────────────────────────────
+function getName() { return document.getElementById('name-input').value.trim() || 'Player'; }
 
 function createRoom() {
   clearError();
@@ -543,121 +372,98 @@ function createRoom() {
   S.difficulty = document.getElementById('difficulty-select').value;
   socket.emit('create_room', { name: S.myName, mode: S.mode, difficulty: S.difficulty });
 }
-
 function joinRoom() {
   clearError();
   const code = document.getElementById('room-code-input').value.trim().toUpperCase();
-  if (code.length !== 6) { showError('Please enter the full 6-character room code.'); return; }
+  if (code.length !== 6) { showError('Enter the full 6-character room code.'); return; }
   S.myName = getName();
   socket.emit('join_room_request', { name: S.myName, room_id: code });
 }
-
 function copyCode() {
   navigator.clipboard.writeText(S.roomId).then(() => {
     const btn = document.querySelector('#screen-waiting .btn');
     const orig = btn.textContent;
     btn.textContent = 'Copied!';
-    setTimeout(() => { btn.textContent = orig; }, 1500);
+    setTimeout(() => btn.textContent = orig, 1500);
   });
 }
-
 function playAgain() {
   document.getElementById('game-over-overlay').classList.remove('show');
   showScreen('lobby');
 }
 
-// ── Board setup ───────────────────────────────────────────────────────────────
+// ── Board setup ────────────────────────────────────────────────────────────
 function buildBoard() {
-  const oppRow = document.getElementById('opp-pits');
-  const myRow  = document.getElementById('my-pits');
-  oppRow.innerHTML = '';
-  myRow.innerHTML  = '';
+  ['opp-pits','my-pits'].forEach(id => document.getElementById(id).innerHTML = '');
 
   for (let i = 1; i <= 6; i++) {
-    // Opponent pits (not clickable)
     const op = document.createElement('div');
-    op.className = 'pit';
-    op.id = `opp-pit-${i}`;
+    op.className = 'pit'; op.id = `opp-pit-${i}`;
     op.innerHTML = `<span class="stone-count">0</span>`;
-    oppRow.appendChild(op);
+    document.getElementById('opp-pits').appendChild(op);
 
-    // My pits (clickable)
     const mp = document.createElement('div');
-    mp.className = 'pit my-pit';
-    mp.id = `my-pit-${i}`;
+    mp.className = 'pit my-pit'; mp.id = `my-pit-${i}`;
     mp.dataset.label = i;
     mp.innerHTML = `<span class="stone-count">0</span><span class="pit-label">${i}</span>`;
     mp.addEventListener('click', () => onPitClick(i));
-    myRow.appendChild(mp);
+    document.getElementById('my-pits').appendChild(mp);
   }
 }
 
-// ── Render state ──────────────────────────────────────────────────────────────
-function renderState(state) {
-  S.lastState = state;
-  const board = state.board;
+// ── Render board only (no status/etc.) ────────────────────────────────────
+function applyBoard(board, validSet, lastPit) {
   const myPits  = myPitIndices();
   const oppPits = oppPitIndices();
-  const mySt    = myStoreIdx();
-  const oppSt   = oppStoreIdx();
 
-  // Stores
-  document.getElementById('my-store-count').textContent  = board[mySt];
-  document.getElementById('opp-store-count').textContent = board[oppSt];
-  document.getElementById('my-store-score').textContent  = board[mySt];
-  document.getElementById('opp-store-score').textContent = board[oppSt];
-
-  const validSet = new Set(state.valid_moves);
-  const lastPit  = state.last_move ? state.last_move.pit : null;
-  const myTurn   = state.current_player === S.playerId;
-
-  // My pits
-  myPits.forEach((boardIdx, i) => {
-    const el = document.getElementById(`my-pit-${i + 1}`);
-    const count = board[boardIdx];
-    el.querySelector('.stone-count').textContent = count;
+  myPits.forEach((bi, i) => {
+    const el = document.getElementById(`my-pit-${i+1}`);
+    el.querySelector('.stone-count').textContent = board[bi];
     el.className = 'pit my-pit';
-    if (count === 0) el.classList.add('empty');
-    if (!myTurn || state.game_over) {
-      el.classList.add('disabled');
-    } else if (validSet.has(boardIdx)) {
-      el.classList.add('valid');
-    }
-    if (boardIdx === lastPit) el.classList.add('last-moved');
+    if (board[bi] === 0) el.classList.add('empty');
+    if (validSet && validSet.has(bi)) el.classList.add('valid');
+    else if (!validSet) el.classList.add('disabled');
+    if (bi === lastPit) el.classList.add('last-moved');
   });
 
-  // Opponent pits
-  oppPits.forEach((boardIdx, i) => {
-    const el = document.getElementById(`opp-pit-${i + 1}`);
-    const count = board[boardIdx];
-    el.querySelector('.stone-count').textContent = count;
+  oppPits.forEach((bi, i) => {
+    const el = document.getElementById(`opp-pit-${i+1}`);
+    el.querySelector('.stone-count').textContent = board[bi];
     el.className = 'pit';
-    if (count === 0) el.classList.add('empty');
-    if (boardIdx === lastPit) el.classList.add('last-moved');
+    if (board[bi] === 0) el.classList.add('empty');
+    if (bi === lastPit) el.classList.add('last-moved');
   });
 
-  // Player bars — highlight active
-  const myBar  = document.getElementById('my-bar');
-  const oppBar = document.getElementById('opp-bar');
-  myBar.classList.toggle('active-player',  myTurn && !state.game_over);
-  oppBar.classList.toggle('active-player', !myTurn && !state.game_over);
+  document.getElementById('my-store-count').textContent  = board[myStoreIdx()];
+  document.getElementById('opp-store-count').textContent = board[oppStoreIdx()];
+  document.getElementById('my-score').textContent        = board[myStoreIdx()];
+  document.getElementById('opp-score').textContent       = board[oppStoreIdx()];
+}
 
-  // Status
+// ── Full render (board + status) ───────────────────────────────────────────
+function renderState(state) {
+  const myTurn   = state.current_player === S.playerId;
+  const validSet = myTurn && !state.game_over ? new Set(state.valid_moves) : null;
+  const lastPit  = state.last_move ? state.last_move.pit : null;
+
+  applyBoard(state.board, validSet, lastPit);
+
+  // Active player highlight
+  document.getElementById('my-bar').classList.toggle('active-player',  myTurn && !state.game_over);
+  document.getElementById('opp-bar').classList.toggle('active-player', !myTurn && !state.game_over);
+
+  // Status bar
   const statusEl = document.getElementById('status-bar');
   if (!state.game_over) {
     if (myTurn) {
+      const myPits = myPitIndices();
       const labels = state.valid_moves
-        .map(idx => myPits.indexOf(idx) + 1)
-        .filter(l => l > 0)
-        .sort((a, b) => a - b);
-      statusEl.textContent = `Your turn  —  pits: ${labels.join(', ')}`;
+        .map(bi => myPits.indexOf(bi) + 1).filter(l => l > 0).sort((a,b)=>a-b);
+      statusEl.textContent = `Your turn — pits: ${labels.join(', ')}`;
       statusEl.className = 'your-turn';
-      if (state.last_move && state.last_move.extra_turn) {
-        addChat('system', 'Extra turn!');
-      }
     } else {
-      const oppLabel = S.mode === 'ai' ? `AI (${S.difficulty})` : (S.oppName || 'Opponent');
-      statusEl.textContent = `Waiting for ${oppLabel}...`;
+      const opp = S.mode === 'ai' ? `AI (${S.difficulty})` : (S.oppName || 'Opponent');
+      statusEl.textContent = `Waiting for ${opp}...`;
       statusEl.className = '';
     }
   } else {
@@ -668,38 +474,103 @@ function renderState(state) {
 }
 
 function showGameOver(state) {
-  const board = state.board;
-  const myScore  = board[myStoreIdx()];
-  const oppScore = board[oppStoreIdx()];
-  const winner   = state.winner;
-
+  const myS  = state.board[myStoreIdx()];
+  const oppS = state.board[oppStoreIdx()];
+  const w    = state.winner;
   let title, color;
-  if (winner === null) {
-    title = "It's a Tie!"; color = '#f0c040';
-  } else if (winner === S.playerId) {
-    title = 'You Win!'; color = '#50d080';
-  } else {
-    title = 'You Lose'; color = '#e05030';
-  }
-
-  const oppLabel = S.mode === 'ai' ? `AI` : (S.oppName || 'Opponent');
+  if (w === null)           { title = "It's a Tie!"; color = '#f0c040'; }
+  else if (w === S.playerId){ title = 'You Win!';    color = '#50d080'; }
+  else                      { title = 'You Lose';    color = '#e05030'; }
+  const opp = S.mode === 'ai' ? 'AI' : (S.oppName || 'Opponent');
   document.getElementById('game-over-title').textContent = title;
   document.getElementById('game-over-title').style.color = color;
-  document.getElementById('game-over-scores').textContent =
-    `You: ${myScore}  |  ${oppLabel}: ${oppScore}`;
+  document.getElementById('game-over-scores').textContent = `You: ${myS}  |  ${opp}: ${oppS}`;
   document.getElementById('game-over-overlay').classList.add('show');
 }
 
-// ── Pit click ─────────────────────────────────────────────────────────────────
+// ── Pit click ──────────────────────────────────────────────────────────────
 function onPitClick(label) {
-  if (!S.lastState || S.lastState.game_over) return;
-  if (S.lastState.current_player !== S.playerId) return;
-  const boardIdx = labelToBoardIdx(label);
-  if (!S.lastState.valid_moves.includes(boardIdx)) return;
-  socket.emit('move', { pit: boardIdx });
+  if (isAnimating) return;
+  socket.emit('move', { pit: labelToBoardIdx(label) });
 }
 
-// ── Chat ──────────────────────────────────────────────────────────────────────
+// ── Animation ─────────────────────────────────────────────────────────────
+// Compute the ordered list of board indices that receive a stone during a move
+function distributionPath(board, player, pit) {
+  const oppStore = player === 0 ? P2_STORE : P1_STORE;
+  let stones = board[pit];
+  let idx = pit;
+  const path = [];
+  for (let i = 0; i < stones; i++) {
+    idx = (idx + 1) % 14;
+    if (idx === oppStore) idx = (idx + 1) % 14;
+    path.push(idx);
+  }
+  return path;
+}
+
+async function animateMove(boardBefore, lastMove, finalState) {
+  const token = ++animToken;
+  isAnimating = true;
+
+  const { player, pit, captured } = lastMove;
+  const myPitsArr = PLAYER_PITS[player];
+  const myStore   = PLAYER_STORE[player];
+
+  // Build a working board starting from before the move
+  const board = [...boardBefore];
+  const path  = distributionPath(board, player, pit);
+
+  // Empty the source pit
+  board[pit] = 0;
+  applyBoard(board, null, null);
+  await sleep(120);
+  if (token !== animToken) return;
+
+  // Drop one stone at a time
+  for (const dest of path) {
+    board[dest]++;
+    applyBoard(board, null, dest);
+
+    const el = pitEl(dest);
+    if (el) {
+      el.classList.add('landing');
+      await sleep(160);
+      el.classList.remove('landing');
+    } else {
+      // It's a store — flash the store count
+      const storeEl = dest === myStoreIdx()
+        ? document.getElementById('my-store-el')
+        : document.getElementById('opp-store-el');
+      storeEl.style.borderColor = 'var(--gold)';
+      await sleep(160);
+      storeEl.style.borderColor = '';
+    }
+    if (token !== animToken) return;
+  }
+
+  // If a capture happened, flash both pits then remove them
+  if (captured) {
+    const lastDest = path[path.length - 1];
+    const opp      = OPPOSITE[lastDest];
+    await sleep(150);
+    if (token !== animToken) return;
+
+    const captureEls = [pitEl(lastDest), pitEl(opp)].filter(Boolean);
+    captureEls.forEach(el => el.classList.add('capture-flash'));
+    await sleep(350);
+    if (token !== animToken) return;
+    captureEls.forEach(el => el.classList.remove('capture-flash'));
+  }
+
+  await sleep(80);
+  if (token !== animToken) return;
+
+  isAnimating = false;
+  renderState(finalState);
+}
+
+// ── Chat ───────────────────────────────────────────────────────────────────
 function addChat(type, text, name) {
   const box = document.getElementById('chat-messages');
   const div = document.createElement('div');
@@ -713,15 +584,11 @@ function addChat(type, text, name) {
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
-
 function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-
 document.getElementById('chat-send').addEventListener('click', sendChat);
-document.getElementById('chat-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') sendChat();
-});
+document.getElementById('chat-input').addEventListener('keydown', e => { if(e.key==='Enter') sendChat(); });
 function sendChat() {
   const el = document.getElementById('chat-input');
   const text = el.value.trim();
@@ -730,7 +597,7 @@ function sendChat() {
   el.value = '';
 }
 
-// ── Socket events ─────────────────────────────────────────────────────────────
+// ── Socket events ──────────────────────────────────────────────────────────
 socket.on('joined', data => {
   S.playerId   = data.player_id;
   S.mode       = data.mode;
@@ -745,10 +612,7 @@ socket.on('joined', data => {
     data.mode === 'ai' ? `vs AI (${data.difficulty})` : 'vs Player';
 
   buildBoard();
-
-  if (data.mode === 'pvp' && !data.opponent) {
-    // PvP creator — still waiting
-  } else {
+  if (data.mode !== 'pvp' || data.opponent) {
     showScreen('game');
     addChat('system', `Game started! You are Player ${S.playerId + 1}.`);
   }
@@ -761,40 +625,41 @@ socket.on('waiting', data => {
 });
 
 socket.on('state', state => {
-  renderState(state);
+  if (prevBoard && state.last_move) {
+    // Cancel any in-progress animation and start a new one
+    const boardSnapshot = prevBoard;
+    prevBoard = state.board;
+    animateMove(boardSnapshot, state.last_move, state);
+  } else {
+    prevBoard = state.board;
+    renderState(state);
+  }
+  if (state.last_move && state.last_move.extra_turn) {
+    addChat('system', 'Extra turn!');
+  }
 });
 
 socket.on('chat', data => {
-  const name = data.from === S.playerId
-    ? (S.myName || 'You')
-    : (S.oppName || 'Opponent');
+  const name = data.from === S.playerId ? (S.myName || 'You') : (S.oppName || 'Opponent');
   addChat('msg', data.text, name);
 });
 
 socket.on('error', data => {
-  if (document.getElementById('screen-lobby').classList.contains('active')) {
+  if (document.getElementById('screen-lobby').classList.contains('active'))
     showError(data.message);
-  } else {
+  else
     addChat('system', `Error: ${data.message}`);
-  }
 });
 
 socket.on('opponent_left', data => {
   addChat('system', data.message);
   document.getElementById('status-bar').textContent = 'Opponent disconnected.';
   document.getElementById('status-bar').className = '';
-  if (S.lastState) {
-    S.lastState.game_over = true;
-  }
 });
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-document.getElementById('name-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') createRoom();
-});
-document.getElementById('room-code-input').addEventListener('input', e => {
-  e.target.value = e.target.value.toUpperCase();
-});
+// ── Init ───────────────────────────────────────────────────────────────────
+document.getElementById('name-input').addEventListener('keydown', e => { if(e.key==='Enter') createRoom(); });
+document.getElementById('room-code-input').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 </script>
 </body>
 </html>

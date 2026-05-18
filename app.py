@@ -64,14 +64,19 @@ class MancalaGame:
 
         extra_turn = (idx == PLAYER_STORE[player])
 
-        if (idx in PLAYER_PITS[player]
-                and self.board[idx] == 1
-                and self.board[OPPOSITE[idx]] > 0):
+        captured = (
+            idx in PLAYER_PITS[player]
+            and self.board[idx] == 1
+            and self.board[OPPOSITE[idx]] > 0
+        )
+        if captured:
+            extra_turn = False  # capture never grants an extra turn
             self.board[PLAYER_STORE[player]] += self.board[idx] + self.board[OPPOSITE[idx]]
             self.board[idx] = 0
             self.board[OPPOSITE[idx]] = 0
 
-        self.last_move = {"player": player, "pit": pit_idx, "extra_turn": extra_turn}
+        self.last_move = {"player": player, "pit": pit_idx,
+                          "extra_turn": extra_turn, "captured": captured}
 
         p1_done = all(self.board[i] == 0 for i in P1_PITS)
         p2_done = all(self.board[i] == 0 for i in P2_PITS)
