@@ -14,6 +14,8 @@ from flask_socketio import SocketIO, join_room, emit
 
 INITIAL_STONES = 4
 NUM_PITS = 14
+AI_STARTUP_DELAY = 0.8
+AI_MOVE_DELAY = 0.5
 P1_PITS = list(range(0, 6))
 P1_STORE = 6
 P2_PITS = list(range(7, 13))
@@ -213,21 +215,32 @@ def _broadcast_state(room_id):
         }, to=p["sid"])
 
 
-def _ai_task(room_id):
-    time.sleep(0.8)
+def _start_ai_task(room_id):
     room = rooms.get(room_id)
     if not room:
         return
-    game = room["game"]
-    while not game.game_over and game.current_player == 1:
+    room["ai_task_token"] = room.get("ai_task_token", 0) + 1
+    token = room["ai_task_token"]
+    socketio.start_background_task(_ai_task, room_id, token)
+
+
+def _ai_task(room_id, token):
+    time.sleep(AI_STARTUP_DELAY)
+    while True:
+        room = rooms.get(room_id)
+        if not room or room.get("ai_task_token") != token:
+            return
+        game = room.get("game")
+        if not game or game.game_over or game.current_player != 1:
+            return
         pit = get_ai_move(game, room["difficulty"])
         if pit is None:
-            break
+            return
         game.make_move(1, pit)
         _broadcast_state(room_id)
         if game.game_over or game.current_player != 1:
-            break
-        time.sleep(0.5)
+            return
+        time.sleep(AI_MOVE_DELAY)
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -258,6 +271,7 @@ def handle_create_room(data):
         "scores": {0: 0, 1: 0},
         "games_played": 0,
         "score_recorded": False,
+        "ai_task_token": 0,
         "next_first_player": first_player,  # used when game actually starts; alternates each rematch
     }
     sid_to_room[sid] = room_id
@@ -272,7 +286,7 @@ def handle_create_room(data):
                         "first_player": first_player})
         _broadcast_state(room_id)
         if first_player == 1:
-            socketio.start_background_task(_ai_task, room_id)
+            _start_ai_task(room_id)
     else:
         emit("joined", {"room_id": room_id, "player_id": 0, "mode": "pvp"})
         emit("waiting", {"room_id": room_id})
@@ -347,7 +361,7 @@ def handle_move(data):
     _broadcast_state(room_id)
 
     if room["mode"] == "ai" and not room["game"].game_over and room["game"].current_player == 1:
-        socketio.start_background_task(_ai_task, room_id)
+        _start_ai_task(room_id)
 
 
 @socketio.on("chat")
@@ -382,8 +396,8 @@ def handle_rematch():
     room["game"] = MancalaGame(first_player=fp)
     room["score_recorded"] = False
     _broadcast_state(room_id)
-    if room["mode"] == "ai" and fp == 1:
-        socketio.start_background_task(_ai_task, room_id)
+    if room["mode"] == "ai" and room["game"].current_player == 1:
+        _start_ai_task(room_id)
 
 
 @socketio.on("disconnect")
