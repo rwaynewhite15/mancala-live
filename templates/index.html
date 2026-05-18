@@ -486,8 +486,10 @@ function renderState(state) {
     return;
   }
 
-  // Hide game-over overlay if a rematch has started
-  document.getElementById('game-over-overlay').classList.remove('show');
+  // Hide game-over overlay only when a new game has actually started
+  if (!latestState || !latestState.game_over) {
+    document.getElementById('game-over-overlay').classList.remove('show');
+  }
 }
 
 function showGameOver(state) {
@@ -608,11 +610,6 @@ async function animateMove(boardBefore, lastMove, finalState) {
     animateMove(next.boardBefore, next.lastMove, next.finalState);
   } else {
     isAnimating = false;
-    // If a newer state arrived that couldn't animate (e.g. game-over with no last_move),
-    // render it now so the overlay is never missed.
-    if (latestState && latestState !== finalState) {
-      renderState(latestState);
-    }
   }
 }
 
@@ -675,6 +672,14 @@ socket.on('state', state => {
   prevBoard = state.board;
   latestState = state;
 
+  // Show game-over immediately, independent of animation pipeline
+  if (state.game_over) {
+    const statusEl = document.getElementById('status-bar');
+    statusEl.textContent = 'Game over';
+    statusEl.className = '';
+    showGameOver(state);
+  }
+
   if (boardSnapshot && state.last_move) {
     const item = { boardBefore: boardSnapshot, lastMove: state.last_move, finalState: state };
     if (isAnimating) {
@@ -684,13 +689,7 @@ socket.on('state', state => {
       animateMove(item.boardBefore, item.lastMove, item.finalState);
     }
   } else {
-    // No animation path: render immediately, or if animating just ensure game-over shows
-    if (!isAnimating) {
-      renderState(state);
-    } else if (state.game_over) {
-      // Game ended but no last_move to animate — force the overlay now
-      renderState(state);
-    }
+    if (!isAnimating) renderState(state);
   }
 });
 
