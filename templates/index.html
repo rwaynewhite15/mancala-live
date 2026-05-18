@@ -252,7 +252,7 @@
 
     <div id="board-wrapper">
       <div class="player-bar" id="opp-bar">
-        <span class="name" id="opp-name">Opponent <span class="record" id="opp-record"></span></span>
+        <span class="name" id="opp-name"><span id="opp-name-text">Opponent</span> <span class="record" id="opp-record"></span></span>
         <span class="score" id="opp-score">0</span>
       </div>
       <div id="board">
@@ -270,7 +270,7 @@
         </div>
       </div>
       <div class="player-bar" id="my-bar">
-        <span class="name" id="my-name">You <span class="record" id="my-record"></span></span>
+        <span class="name" id="my-name"><span id="my-name-text">You</span> <span class="record" id="my-record"></span></span>
         <span class="score" id="my-score">0</span>
       </div>
     </div>
@@ -672,8 +672,8 @@ socket.on('joined', data => {
   document.getElementById('opp-record').textContent = '';
   document.getElementById('chat-messages').innerHTML = '';
 
-  document.getElementById('my-name').textContent  = S.myName || 'You';
-  document.getElementById('opp-name').textContent = S.oppName;
+  document.getElementById('my-name-text').textContent  = S.myName || 'You';
+  document.getElementById('opp-name-text').textContent = S.oppName;
   document.getElementById('gh-room').textContent  = `Room: ${S.roomId}`;
   document.getElementById('gh-mode').textContent  =
     data.mode === 'ai' ? `vs AI (${data.difficulty})` : 'vs Player';
