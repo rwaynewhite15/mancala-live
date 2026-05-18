@@ -239,6 +239,12 @@ def _ai_task(room_id, token):
         if pit is None:
             return
         game.make_move(1, pit)
+        # Re-check token: a rematch may have replaced room["game"] while
+        # make_move was running; broadcasting now would emit the new game's
+        # initial state as if it were a move, confusing the client.
+        room = rooms.get(room_id)
+        if not room or room.get("ai_task_token") != token:
+            return
         _broadcast_state(room_id)
         if game.game_over or game.current_player != 1:
             return
