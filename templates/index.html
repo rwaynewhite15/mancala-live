@@ -502,10 +502,7 @@ function renderState(state) {
     return;
   }
 
-  // Hide game-over overlay only when a new game has actually started
-  if (!latestState || !latestState.game_over) {
-    document.getElementById('game-over-overlay').classList.remove('show');
-  }
+  document.getElementById('game-over-overlay').classList.remove('show');
 }
 
 function showGameOver(state) {
