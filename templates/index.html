@@ -704,6 +704,7 @@ socket.on('waiting', data => {
 });
 
 socket.on('state', state => {
+  // Backward-compatible guard: enforce ordering when server provides state_seq.
   if (typeof state.state_seq === 'number') {
     if (state.state_seq <= latestStateSeq) return;
     latestStateSeq = state.state_seq;
