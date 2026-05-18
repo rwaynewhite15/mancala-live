@@ -710,13 +710,16 @@ socket.on('state', state => {
   prevBoard  = state.board;
   latestState = state;
 
-  // Detect rematch start: game-over → new game with no last_move
-  if (wasGameOver && !state.game_over && !state.last_move) {
+  // Detect fresh-game state (rematch/new game): no game-over and no last_move yet.
+  // If we were game-over, or an old animation is still in flight, force a clean reset render.
+  if (!state.game_over && !state.last_move && (wasGameOver || isAnimating)) {
     cancelAnimations();
-    const fp = state.current_player;
-    const whoFirst = fp === S.playerId ? 'You go first'
-      : (S.mode === 'ai' ? 'AI goes first' : `${S.oppName || 'Opponent'} goes first`);
-    addChat('system', `Rematch! ${whoFirst}.`);
+    if (wasGameOver) {
+      const fp = state.current_player;
+      const whoFirst = fp === S.playerId ? 'You go first'
+        : (S.mode === 'ai' ? 'AI goes first' : `${S.oppName || 'Opponent'} goes first`);
+      addChat('system', `Rematch! ${whoFirst}.`);
+    }
     renderState(state);
     return;
   }
