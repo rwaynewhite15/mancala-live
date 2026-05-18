@@ -314,9 +314,10 @@ const S = {
   roomId: null, myName: null, oppName: null,
   selectedMode: 'pvp',
 };
-let prevBoard   = null;
-let isAnimating = false;
-let animQueue   = [];   // { boardBefore, lastMove, finalState }
+let prevBoard           = null;
+let isAnimating         = false;
+let animQueue           = [];   // { boardBefore, lastMove, finalState }
+let lastGameSummarized  = -1;   // games_played value of last chat summary
 
 // ── Pit index helpers ──────────────────────────────────────────────────────
 function myPitIndices()  {
@@ -516,6 +517,20 @@ function showGameOver(state) {
   }
 
   document.getElementById('game-over-overlay').classList.add('show');
+
+  // Post summary to chat once per completed game
+  if (gp !== lastGameSummarized) {
+    lastGameSummarized = gp;
+    const myS   = state.board[myStoreIdx()];
+    const oppS  = state.board[oppStoreIdx()];
+    const opp   = S.mode === 'ai' ? 'AI' : (S.oppName || 'Opponent');
+    const myW   = scores[S.playerId]      || 0;
+    const oppW  = scores[1 - S.playerId]  || 0;
+    let result  = w === null ? 'Tie' : (w === S.playerId ? 'You win!' : 'You lose');
+    let summary = `Game ${gp}: You ${myS} – ${opp} ${oppS} | ${result}`;
+    if (gp >= 1) summary += ` | Series ${myW}–${oppW}`;
+    addChat('system', summary);
+  }
 }
 
 function requestRematch() {
