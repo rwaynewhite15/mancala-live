@@ -213,6 +213,12 @@
             <option value="hard">Hard</option>
           </select>
         </div>
+        <h3>First Move</h3>
+        <select id="first-move-select">
+          <option value="0">You go first</option>
+          <option id="first-move-opp" value="1">Opponent goes first</option>
+          <option value="random">Random</option>
+        </select>
         <button class="btn btn-primary" onclick="createRoom()">Create Game</button>
       </div>
 
@@ -361,6 +367,8 @@ function selectMode(m) {
   document.getElementById('mode-pvp').classList.toggle('active', m==='pvp');
   document.getElementById('mode-ai').classList.toggle('active',  m==='ai');
   document.getElementById('difficulty-row').classList.toggle('hidden', m!=='ai');
+  document.getElementById('first-move-opp').textContent =
+    m === 'ai' ? 'AI goes first' : 'Opponent goes first';
 }
 function showError(msg) {
   const el = document.getElementById('error-banner');
@@ -376,7 +384,8 @@ function createRoom() {
   S.myName = getName();
   S.mode = S.selectedMode;
   S.difficulty = document.getElementById('difficulty-select').value;
-  socket.emit('create_room', { name: S.myName, mode: S.mode, difficulty: S.difficulty });
+  const firstPlayer = document.getElementById('first-move-select').value;
+  socket.emit('create_room', { name: S.myName, mode: S.mode, difficulty: S.difficulty, first_player: firstPlayer });
 }
 function joinRoom() {
   clearError();
@@ -670,7 +679,10 @@ socket.on('joined', data => {
   buildBoard();
   if (data.mode !== 'pvp' || data.opponent) {
     showScreen('game');
-    addChat('system', `Game started! You are Player ${S.playerId + 1}.`);
+    const fp = data.first_player;
+    const whoFirst = fp === S.playerId ? 'You go first'
+      : (data.mode === 'ai' ? 'AI goes first' : `${S.oppName} goes first`);
+    addChat('system', `Game started. ${whoFirst}.`);
   }
 });
 
@@ -682,8 +694,17 @@ socket.on('waiting', data => {
 
 socket.on('state', state => {
   const boardSnapshot = prevBoard;
-  prevBoard = state.board;
+  const wasGameOver   = latestState && latestState.game_over;
+  prevBoard  = state.board;
   latestState = state;
+
+  // Detect rematch start: game-over → new game with no last_move
+  if (wasGameOver && !state.game_over && !state.last_move) {
+    const fp = state.current_player;
+    const whoFirst = fp === S.playerId ? 'You go first'
+      : (S.mode === 'ai' ? 'AI goes first' : `${S.oppName || 'Opponent'} goes first`);
+    addChat('system', `Rematch! ${whoFirst}.`);
+  }
 
   // Show game-over immediately, independent of animation pipeline
   if (state.game_over) {

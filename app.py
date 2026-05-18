@@ -25,11 +25,11 @@ OPPOSITE.update({12 - i: i for i in range(0, 6)})
 
 
 class MancalaGame:
-    def __init__(self):
+    def __init__(self, first_player=0):
         self.board = [INITIAL_STONES] * NUM_PITS
         self.board[P1_STORE] = 0
         self.board[P2_STORE] = 0
-        self.current_player = 0
+        self.current_player = first_player
         self.game_over = False
         self.winner = None
         self.last_move = None
@@ -245,6 +245,8 @@ def handle_create_room(data):
     mode = data.get("mode", "pvp")
     difficulty = data.get("difficulty", "medium")
     name = str(data.get("name", "Player"))[:20].strip() or "Player"
+    fp_raw = data.get("first_player", "0")
+    first_player = random.randint(0, 1) if fp_raw == "random" else int(fp_raw)
 
     room_id = _make_room_id()
     rooms[room_id] = {
@@ -256,16 +258,21 @@ def handle_create_room(data):
         "scores": {0: 0, 1: 0},
         "games_played": 0,
         "score_recorded": False,
+        "next_first_player": first_player,  # used when game actually starts; alternates each rematch
     }
     sid_to_room[sid] = room_id
     join_room(room_id)
 
     if mode == "ai":
-        rooms[room_id]["game"] = MancalaGame()
+        rooms[room_id]["game"] = MancalaGame(first_player=first_player)
+        rooms[room_id]["next_first_player"] = 1 - first_player
         rooms[room_id]["started"] = True
         emit("joined", {"room_id": room_id, "player_id": 0, "mode": "ai",
-                        "difficulty": difficulty, "opponent": f"AI ({difficulty})"})
+                        "difficulty": difficulty, "opponent": f"AI ({difficulty})",
+                        "first_player": first_player})
         _broadcast_state(room_id)
+        if first_player == 1:
+            socketio.start_background_task(_ai_task, room_id)
     else:
         emit("joined", {"room_id": room_id, "player_id": 0, "mode": "pvp"})
         emit("waiting", {"room_id": room_id})
@@ -295,17 +302,21 @@ def handle_join_room(data):
     sid_to_room[sid] = room_id
     join_room(room_id)
 
-    room["game"] = MancalaGame()
+    fp = room["next_first_player"]
+    room["next_first_player"] = 1 - fp
+    room["game"] = MancalaGame(first_player=fp)
     room["started"] = True
 
     p0 = room["players"][0]
     p1 = room["players"][1]
 
     socketio.emit("joined", {
-        "room_id": room_id, "player_id": 0, "mode": "pvp", "opponent": p1["name"]
+        "room_id": room_id, "player_id": 0, "mode": "pvp", "opponent": p1["name"],
+        "first_player": fp,
     }, to=p0["sid"])
     emit("joined", {
-        "room_id": room_id, "player_id": 1, "mode": "pvp", "opponent": p0["name"]
+        "room_id": room_id, "player_id": 1, "mode": "pvp", "opponent": p0["name"],
+        "first_player": fp,
     })
     _broadcast_state(room_id)
 
@@ -366,9 +377,13 @@ def handle_rematch():
     room = rooms.get(room_id)
     if not room or not room["started"] or not room["game"].game_over:
         return
-    room["game"] = MancalaGame()
+    fp = room["next_first_player"]
+    room["next_first_player"] = 1 - fp
+    room["game"] = MancalaGame(first_player=fp)
     room["score_recorded"] = False
     _broadcast_state(room_id)
+    if room["mode"] == "ai" and fp == 1:
+        socketio.start_background_task(_ai_task, room_id)
 
 
 @socketio.on("disconnect")
