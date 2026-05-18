@@ -559,8 +559,10 @@ function requestRematch() {
 
 // ── Pit click ──────────────────────────────────────────────────────────────
 function onPitClick(label) {
-  if (isAnimating) return;
-  socket.emit('move', { pit: labelToBoardIdx(label) });
+  if (isAnimating) { console.log('[click] BLOCKED isAnimating=true'); return; }
+  const pit = labelToBoardIdx(label);
+  console.log('[click] emit move pit='+pit+' cp='+latestState?.current_player+' myId='+S.playerId);
+  socket.emit('move', { pit });
 }
 
 // ── Animation ─────────────────────────────────────────────────────────────
@@ -627,13 +629,16 @@ async function animateMove(boardBefore, lastMove, finalState) {
 
   await sleep(150);
   if (!isStillCurrentAnimation()) return;
+  console.log('[anim] done → renderState cp='+finalState.current_player+' go='+finalState.game_over+' validMoves='+JSON.stringify(finalState.valid_moves));
   renderState(finalState);
 
   // Play next queued animation, if any
   if (animQueue.length > 0) {
+    console.log('[anim] playing queued item, remaining='+animQueue.length);
     const next = animQueue.shift();
     animateMove(next.boardBefore, next.lastMove, next.finalState);
   } else {
+    console.log('[anim] queue empty → isAnimating=false');
     isAnimating = false;
   }
 }
@@ -711,7 +716,10 @@ socket.on('waiting', data => {
 socket.on('state', state => {
   // Backward-compatible guard: enforce ordering when server provides state_seq.
   if (typeof state.state_seq === 'number') {
-    if (state.state_seq <= latestStateSeq) return;
+    if (state.state_seq <= latestStateSeq) {
+      console.log('[state] DROPPED seq', state.state_seq, '(latest='+latestStateSeq+') go='+state.game_over, 'lm='+!!state.last_move);
+      return;
+    }
     latestStateSeq = state.state_seq;
   }
 
@@ -720,11 +728,14 @@ socket.on('state', state => {
   prevBoard  = state.board;
   latestState = state;
 
+  console.log('[state] seq='+state.state_seq, 'go='+state.game_over, 'lm='+!!state.last_move, 'wasGO='+wasGameOver, 'cp='+state.current_player, 'isAnim='+isAnimating, 'qlen='+animQueue.length);
+
   // Detect rematch/new game: no game-over and no last_move, and we were
   // previously in a game-over state.  Requiring wasGameOver prevents a stale
   // server broadcast (e.g. from a background AI task racing with handle_rematch)
   // from spuriously cancelling a live animation and leaving the UI frozen.
   if (!state.game_over && !state.last_move && wasGameOver) {
+    console.log('[state] REMATCH detected → cancelAnimations');
     cancelAnimations();
     const fp = state.current_player;
     const whoFirst = fp === S.playerId ? 'You go first'
@@ -745,13 +756,16 @@ socket.on('state', state => {
   if (boardSnapshot && state.last_move) {
     const item = { boardBefore: boardSnapshot, lastMove: state.last_move, finalState: state };
     if (isAnimating) {
+      console.log('[state] QUEUED (isAnimating)');
       animQueue.push(item);       // let current animation finish first
     } else {
+      console.log('[state] starting animation');
       isAnimating = true;
       animateMove(item.boardBefore, item.lastMove, item.finalState);
     }
   } else {
-    if (!isAnimating) renderState(state);
+    if (!isAnimating) { console.log('[state] renderState direct'); renderState(state); }
+    else console.log('[state] no-op (isAnimating, no lastMove)');
   }
 });
 
