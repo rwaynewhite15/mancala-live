@@ -323,6 +323,7 @@ let prevBoard           = null;
 let isAnimating         = false;
 let animQueue           = [];   // { boardBefore, lastMove, finalState }
 let latestState         = null; // always the most recent state from server
+let latestStateSeq      = 0;    // monotonic server sequence for state ordering
 let lastGameSummarized  = -1;   // games_played value of last chat summary
 let animationVersion    = 0;
 
@@ -670,6 +671,7 @@ socket.on('joined', data => {
   // Reset state for new game/room
   prevBoard          = null;
   latestState        = null;
+  latestStateSeq     = 0;
   cancelAnimations();
   lastGameSummarized = -1;
   document.getElementById('my-record').textContent  = '';
@@ -702,6 +704,12 @@ socket.on('waiting', data => {
 });
 
 socket.on('state', state => {
+  // Backward-compatible guard: enforce ordering when server provides state_seq.
+  if (typeof state.state_seq === 'number') {
+    if (state.state_seq <= latestStateSeq) return;
+    latestStateSeq = state.state_seq;
+  }
+
   const boardSnapshot = prevBoard;
   const wasGameOver   = latestState && latestState.game_over;
   prevBoard  = state.board;
