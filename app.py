@@ -239,9 +239,6 @@ def _ai_task(room_id, token):
         if pit is None:
             return
         game.make_move(1, pit)
-        # Re-check token: a rematch may have replaced room["game"] while
-        # make_move was running; broadcasting now would emit the new game's
-        # initial state as if it were a move, confusing the client.
         room = rooms.get(room_id)
         if not room or room.get("ai_task_token") != token:
             return
@@ -404,9 +401,9 @@ def handle_rematch():
     room["next_first_player"] = 1 - fp
     room["game"] = MancalaGame(first_player=fp)
     room["score_recorded"] = False
-    # Invalidate old AI task BEFORE broadcasting so it can't sneak in a move
-    # on the new game object between the broadcast and the new task starting.
     room["ai_task_token"] = room.get("ai_task_token", 0) + 1
+    for p in room["players"]:
+        socketio.emit("new_game", {"first_player": fp}, to=p["sid"])
     _broadcast_state(room_id)
     if room["mode"] == "ai" and room["game"].current_player == 1:
         token = room["ai_task_token"]

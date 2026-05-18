@@ -247,6 +247,7 @@
     <div id="game-header">
       <span id="gh-mode"></span>
       <span id="gh-room"></span>
+      <button class="btn btn-secondary" style="font-size:.75rem;padding:4px 12px" onclick="goToMainMenu()">Main Menu</button>
     </div>
 
     <div id="board-wrapper">
@@ -295,7 +296,7 @@
     <div id="game-over-record" style="color:var(--gold);font-size:.95rem;margin-top:8px"></div>
     <div style="display:flex;gap:10px;justify-content:center;margin-top:18px">
       <button class="btn btn-primary" onclick="requestRematch()">Rematch</button>
-      <button class="btn btn-secondary" onclick="playAgain()">New Game</button>
+      <button class="btn btn-secondary" onclick="goToMainMenu()">Main Menu</button>
     </div>
   </div>
 </div>
@@ -319,13 +320,12 @@ const S = {
   roomId: null, myName: null, oppName: null,
   selectedMode: 'pvp',
 };
-let prevBoard           = null;
-let isAnimating         = false;
-let animQueue           = [];   // { boardBefore, lastMove, finalState }
-let latestState         = null; // always the most recent state from server
-let latestStateSeq      = 0;    // monotonic server sequence for state ordering
-let lastGameSummarized  = -1;   // games_played value of last chat summary
-let animationVersion    = 0;
+let prevBoard          = null;
+let isAnimating        = false;
+let animQueue          = [];
+let latestStateSeq     = 0;
+let lastGameSummarized = -1;
+let animationVersion   = 0;
 
 // ── Pit index helpers ──────────────────────────────────────────────────────
 function myPitIndices()  {
@@ -410,7 +410,7 @@ function copyCode() {
     setTimeout(() => btn.textContent = orig, 1500);
   });
 }
-function playAgain() {
+function goToMainMenu() {
   document.getElementById('game-over-overlay').classList.remove('show');
   showScreen('lobby');
 }
@@ -471,7 +471,6 @@ function renderState(state) {
 
   applyBoard(state.board, validSet, lastPit);
 
-  // Win record in player bars (only after first game completes)
   const scores = state.scores || {0: 0, 1: 0};
   const gp = state.games_played || 0;
   if (gp >= 1) {
@@ -481,13 +480,15 @@ function renderState(state) {
     document.getElementById('opp-record').textContent = `${oppW}W–${myW}L`;
   }
 
-  // Active player highlight
   document.getElementById('my-bar').classList.toggle('active-player',  myTurn && !state.game_over);
   document.getElementById('opp-bar').classList.toggle('active-player', !myTurn && !state.game_over);
 
-  // Status bar
   const statusEl = document.getElementById('status-bar');
-  if (!state.game_over) {
+  if (state.game_over) {
+    statusEl.textContent = 'Game over';
+    statusEl.className = '';
+    showGameOver(state);
+  } else {
     if (myTurn) {
       statusEl.textContent = 'Your turn';
       statusEl.className = 'your-turn';
@@ -496,17 +497,6 @@ function renderState(state) {
       statusEl.textContent = `Waiting for ${opp}...`;
       statusEl.className = '';
     }
-  } else {
-    statusEl.textContent = 'Game over';
-    statusEl.className = '';
-    showGameOver(state);
-    return;
-  }
-
-  // Don't hide the overlay if a newer game-over state has already arrived
-  // (e.g. a queued pre-game-over animation is finishing while we're already
-  // showing game-over from a later state).
-  if (!latestState || !latestState.game_over) {
     document.getElementById('game-over-overlay').classList.remove('show');
   }
 }
@@ -559,10 +549,8 @@ function requestRematch() {
 
 // ── Pit click ──────────────────────────────────────────────────────────────
 function onPitClick(label) {
-  if (isAnimating) { console.log('[click] BLOCKED isAnimating=true'); return; }
-  const pit = labelToBoardIdx(label);
-  console.log('[click] emit move pit='+pit+' cp='+latestState?.current_player+' myId='+S.playerId);
-  socket.emit('move', { pit });
+  if (isAnimating) return;
+  socket.emit('move', { pit: labelToBoardIdx(label) });
 }
 
 // ── Animation ─────────────────────────────────────────────────────────────
@@ -629,16 +617,12 @@ async function animateMove(boardBefore, lastMove, finalState) {
 
   await sleep(150);
   if (!isStillCurrentAnimation()) return;
-  console.log('[anim] done → renderState cp='+finalState.current_player+' go='+finalState.game_over+' validMoves='+JSON.stringify(finalState.valid_moves));
   renderState(finalState);
 
-  // Play next queued animation, if any
   if (animQueue.length > 0) {
-    console.log('[anim] playing queued item, remaining='+animQueue.length);
     const next = animQueue.shift();
     animateMove(next.boardBefore, next.lastMove, next.finalState);
   } else {
-    console.log('[anim] queue empty → isAnimating=false');
     isAnimating = false;
   }
 }
@@ -680,7 +664,6 @@ socket.on('joined', data => {
 
   // Reset state for new game/room
   prevBoard          = null;
-  latestState        = null;
   latestStateSeq     = 0;
   cancelAnimations();
   lastGameSummarized = -1;
@@ -713,59 +696,37 @@ socket.on('waiting', data => {
   showScreen('waiting');
 });
 
+socket.on('new_game', data => {
+  cancelAnimations();
+  prevBoard = null;
+  document.getElementById('game-over-overlay').classList.remove('show');
+  const fp = data.first_player;
+  const whoFirst = fp === S.playerId ? 'You go first'
+    : (S.mode === 'ai' ? 'AI goes first' : `${S.oppName || 'Opponent'} goes first`);
+  addChat('system', `Rematch! ${whoFirst}.`);
+});
+
 socket.on('state', state => {
-  // Backward-compatible guard: enforce ordering when server provides state_seq.
   if (typeof state.state_seq === 'number') {
-    if (state.state_seq <= latestStateSeq) {
-      console.log('[state] DROPPED seq', state.state_seq, '(latest='+latestStateSeq+') go='+state.game_over, 'lm='+!!state.last_move);
-      return;
-    }
+    if (state.state_seq <= latestStateSeq) return;
     latestStateSeq = state.state_seq;
   }
 
   const boardSnapshot = prevBoard;
-  const wasGameOver   = latestState && latestState.game_over;
-  prevBoard  = state.board;
-  latestState = state;
+  prevBoard = state.board;
 
-  console.log('[state] seq='+state.state_seq, 'go='+state.game_over, 'lm='+!!state.last_move, 'wasGO='+wasGameOver, 'cp='+state.current_player, 'isAnim='+isAnimating, 'qlen='+animQueue.length);
-
-  // Detect rematch/new game: no game-over and no last_move, and we were
-  // previously in a game-over state.  Requiring wasGameOver prevents a stale
-  // server broadcast (e.g. from a background AI task racing with handle_rematch)
-  // from spuriously cancelling a live animation and leaving the UI frozen.
-  if (!state.game_over && !state.last_move && wasGameOver) {
-    console.log('[state] REMATCH detected → cancelAnimations');
-    cancelAnimations();
-    const fp = state.current_player;
-    const whoFirst = fp === S.playerId ? 'You go first'
-      : (S.mode === 'ai' ? 'AI goes first' : `${S.oppName || 'Opponent'} goes first`);
-    addChat('system', `Rematch! ${whoFirst}.`);
-    renderState(state);
-    return;
-  }
-
-  // Show game-over immediately, independent of animation pipeline
   if (state.game_over) {
-    const statusEl = document.getElementById('status-bar');
-    statusEl.textContent = 'Game over';
-    statusEl.className = '';
+    document.getElementById('status-bar').textContent = 'Game over';
+    document.getElementById('status-bar').className = '';
     showGameOver(state);
   }
 
   if (boardSnapshot && state.last_move) {
     const item = { boardBefore: boardSnapshot, lastMove: state.last_move, finalState: state };
-    if (isAnimating) {
-      console.log('[state] QUEUED (isAnimating)');
-      animQueue.push(item);       // let current animation finish first
-    } else {
-      console.log('[state] starting animation');
-      isAnimating = true;
-      animateMove(item.boardBefore, item.lastMove, item.finalState);
-    }
+    if (isAnimating) animQueue.push(item);
+    else { isAnimating = true; animateMove(item.boardBefore, item.lastMove, item.finalState); }
   } else {
-    if (!isAnimating) { console.log('[state] renderState direct'); renderState(state); }
-    else console.log('[state] no-op (isAnimating, no lastMove)');
+    if (!isAnimating) renderState(state);
   }
 });
 
