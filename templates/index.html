@@ -503,7 +503,12 @@ function renderState(state) {
     return;
   }
 
-  document.getElementById('game-over-overlay').classList.remove('show');
+  // Don't hide the overlay if a newer game-over state has already arrived
+  // (e.g. a queued pre-game-over animation is finishing while we're already
+  // showing game-over from a later state).
+  if (!latestState || !latestState.game_over) {
+    document.getElementById('game-over-overlay').classList.remove('show');
+  }
 }
 
 function showGameOver(state) {
