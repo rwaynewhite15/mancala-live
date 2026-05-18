@@ -351,6 +351,12 @@ function pitEl(boardIdx) {
   return null;
 }
 
+function cancelAnimations() {
+  animationVersion++;
+  isAnimating = false;
+  animQueue = [];
+}
+
 // ── Screen management ──────────────────────────────────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -572,7 +578,7 @@ function distributionPath(board, player, pit) {
 async function animateMove(boardBefore, lastMove, finalState) {
   const version = animationVersion;
   const { player, pit, captured } = lastMove;
-  const isCurrent = () => version === animationVersion;
+  const isStillCurrentAnimation = () => version === animationVersion;
 
   const board = [...boardBefore];
   const path  = distributionPath(board, player, pit);
@@ -581,7 +587,7 @@ async function animateMove(boardBefore, lastMove, finalState) {
   board[pit] = 0;
   applyBoard(board, null, null);
   await sleep(200);
-  if (!isCurrent()) return;
+  if (!isStillCurrentAnimation()) return;
 
   // Drop one stone at a time
   for (const dest of path) {
@@ -601,7 +607,7 @@ async function animateMove(boardBefore, lastMove, finalState) {
       await sleep(300);
       storeEl.style.borderColor = '';
     }
-    if (!isCurrent()) return;
+    if (!isStillCurrentAnimation()) return;
   }
 
   // If a capture happened, flash both pits then clear them
@@ -613,11 +619,11 @@ async function animateMove(boardBefore, lastMove, finalState) {
     captureEls.forEach(el => el.classList.add('capture-flash'));
     await sleep(500);
     captureEls.forEach(el => el.classList.remove('capture-flash'));
-    if (!isCurrent()) return;
+    if (!isStillCurrentAnimation()) return;
   }
 
   await sleep(150);
-  if (!isCurrent()) return;
+  if (!isStillCurrentAnimation()) return;
   renderState(finalState);
 
   // Play next queued animation, if any
@@ -667,10 +673,8 @@ socket.on('joined', data => {
   // Reset state for new game/room
   prevBoard          = null;
   latestState        = null;
-  isAnimating        = false;
-  animQueue          = [];
+  cancelAnimations();
   lastGameSummarized = -1;
-  animationVersion++;
   document.getElementById('my-record').textContent  = '';
   document.getElementById('opp-record').textContent = '';
   document.getElementById('chat-messages').innerHTML = '';
@@ -708,9 +712,7 @@ socket.on('state', state => {
 
   // Detect rematch start: game-over → new game with no last_move
   if (wasGameOver && !state.game_over && !state.last_move) {
-    animationVersion++;
-    isAnimating = false;
-    animQueue = [];
+    cancelAnimations();
     const fp = state.current_player;
     const whoFirst = fp === S.playerId ? 'You go first'
       : (S.mode === 'ai' ? 'AI goes first' : `${S.oppName || 'Opponent'} goes first`);
