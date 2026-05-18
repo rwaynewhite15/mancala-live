@@ -132,7 +132,6 @@
     flex-shrink: 0;
   }
   .pit .stone-count { font-size: var(--pit-font); font-weight: 700; line-height: 1; }
-  .pit .pit-label   { font-size: calc(var(--pit-size) * 0.16); color: var(--muted); line-height: 1; }
 
   .pit.my-pit  { cursor: pointer; }
   .pit.my-pit:hover:not(.disabled) { background: var(--pit-h); }
@@ -411,7 +410,7 @@ function buildBoard() {
     const mp = document.createElement('div');
     mp.className = 'pit my-pit'; mp.id = `my-pit-${i}`;
     mp.dataset.label = i;
-    mp.innerHTML = `<span class="stone-count">0</span><span class="pit-label">${i}</span>`;
+    mp.innerHTML = `<span class="stone-count">0</span>`;
     mp.addEventListener('click', () => onPitClick(i));
     document.getElementById('my-pits').appendChild(mp);
   }
@@ -472,10 +471,7 @@ function renderState(state) {
   const statusEl = document.getElementById('status-bar');
   if (!state.game_over) {
     if (myTurn) {
-      const myPits = myPitIndices();
-      const labels = state.valid_moves
-        .map(bi => myPits.indexOf(bi) + 1).filter(l => l > 0).sort((a,b)=>a-b);
-      statusEl.textContent = `Your turn — pits: ${labels.join(', ')}`;
+      statusEl.textContent = 'Your turn';
       statusEl.className = 'your-turn';
     } else {
       const opp = S.mode === 'ai' ? `AI (${S.difficulty})` : (S.oppName || 'Opponent');
@@ -671,10 +667,6 @@ socket.on('waiting', data => {
 socket.on('state', state => {
   const boardSnapshot = prevBoard;
   prevBoard = state.board;
-
-  if (state.last_move && state.last_move.extra_turn) {
-    addChat('system', 'Extra turn!');
-  }
 
   if (boardSnapshot && state.last_move) {
     const item = { boardBefore: boardSnapshot, lastMove: state.last_move, finalState: state };

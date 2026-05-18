@@ -79,19 +79,26 @@ class MancalaGame:
         p1_done = all(self.board[i] == 0 for i in P1_PITS)
         p2_done = all(self.board[i] == 0 for i in P2_PITS)
         if p1_done or p2_done:
-            for i in P1_PITS:
-                self.board[P1_STORE] += self.board[i]
-                self.board[i] = 0
-            for i in P2_PITS:
-                self.board[P2_STORE] += self.board[i]
-                self.board[i] = 0
-            self.game_over = True
-            s1, s2 = self.board[P1_STORE], self.board[P2_STORE]
-            self.winner = 0 if s1 > s2 else (1 if s2 > s1 else None)
+            self._sweep_and_finish()
         elif not extra_turn:
             self.current_player = 1 - player
+            if not self.valid_moves():
+                self._sweep_and_finish()
+        elif not self.valid_moves():
+            self._sweep_and_finish()
 
         return True, "OK"
+
+    def _sweep_and_finish(self):
+        for i in P1_PITS:
+            self.board[P1_STORE] += self.board[i]
+            self.board[i] = 0
+        for i in P2_PITS:
+            self.board[P2_STORE] += self.board[i]
+            self.board[i] = 0
+        self.game_over = True
+        s1, s2 = self.board[P1_STORE], self.board[P2_STORE]
+        self.winner = 0 if s1 > s2 else (1 if s2 > s1 else None)
 
     def state(self):
         return {
