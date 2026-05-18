@@ -676,7 +676,7 @@ socket.on('joined', data => {
   document.getElementById('opp-name-text').textContent = S.oppName;
   document.getElementById('gh-room').textContent  = `Room: ${S.roomId}`;
   document.getElementById('gh-mode').textContent  =
-    data.mode === 'ai' ? `vs AI (${data.difficulty})` : 'vs Player';
+    data.mode === 'ai' ? `vs AI (${data.difficulty})` : `vs ${S.oppName}`;
 
   // Show chat input only in PvP
   document.getElementById('chat-input-row').style.display = data.mode === 'ai' ? 'none' : 'flex';
