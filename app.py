@@ -179,13 +179,31 @@ def _make_room_id():
             return code
 
 
+def _record_score(room):
+    """Call once when a game ends to tally the winner."""
+    if room.get("score_recorded"):
+        return
+    room["score_recorded"] = True
+    room["games_played"] += 1
+    winner = room["game"].winner
+    if winner is not None:
+        room["scores"][winner] += 1
+
+
 def _broadcast_state(room_id):
     room = rooms.get(room_id)
     if not room or not room["game"]:
         return
+    if room["game"].game_over:
+        _record_score(room)
     state = room["game"].state()
     for p in room["players"]:
-        socketio.emit("state", {**state, "your_player": p["player_id"]}, to=p["sid"])
+        socketio.emit("state", {
+            **state,
+            "your_player": p["player_id"],
+            "scores": room["scores"],
+            "games_played": room["games_played"],
+        }, to=p["sid"])
 
 
 def _ai_task(room_id):
@@ -228,6 +246,9 @@ def handle_create_room(data):
         "difficulty": difficulty,
         "players": [{"sid": sid, "player_id": 0, "name": name}],
         "started": False,
+        "scores": {0: 0, 1: 0},
+        "games_played": 0,
+        "score_recorded": False,
     }
     sid_to_room[sid] = room_id
     join_room(room_id)
@@ -329,6 +350,18 @@ def handle_chat(data):
     socketio.emit("chat", {
         "from": player["player_id"], "name": player["name"], "text": text
     }, to=room_id)
+
+
+@socketio.on("rematch")
+def handle_rematch():
+    sid = request.sid
+    room_id = sid_to_room.get(sid)
+    room = rooms.get(room_id)
+    if not room or not room["started"] or not room["game"].game_over:
+        return
+    room["game"] = MancalaGame()
+    room["score_recorded"] = False
+    _broadcast_state(room_id)
 
 
 @socketio.on("disconnect")

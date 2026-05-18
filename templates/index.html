@@ -103,6 +103,7 @@
   .player-bar .name { font-weight: 600; }
   .player-bar .score { color: var(--gold); font-weight: 700; font-size: 1.05rem; }
   .player-bar.active-player .name { color: var(--gold); }
+  .record { font-size: .75rem; color: var(--muted); font-weight: 400; margin-left: 5px; }
 
   #board { display: grid; grid-template-columns: var(--store-w) 1fr var(--store-w); gap: var(--pit-gap); align-items: center; margin: 6px 0; }
 
@@ -245,7 +246,7 @@
 
     <div id="board-wrapper">
       <div class="player-bar" id="opp-bar">
-        <span class="name" id="opp-name">Opponent</span>
+        <span class="name" id="opp-name">Opponent <span class="record" id="opp-record"></span></span>
         <span class="score" id="opp-score">0</span>
       </div>
       <div id="board">
@@ -263,7 +264,7 @@
         </div>
       </div>
       <div class="player-bar" id="my-bar">
-        <span class="name" id="my-name">You</span>
+        <span class="name" id="my-name">You <span class="record" id="my-record"></span></span>
         <span class="score" id="my-score">0</span>
       </div>
     </div>
@@ -286,7 +287,11 @@
   <div id="game-over-box">
     <div id="game-over-title">Game Over</div>
     <div id="game-over-scores"></div>
-    <button class="btn btn-primary" style="margin-top:18px" onclick="playAgain()">Play Again</button>
+    <div id="game-over-record" style="color:var(--gold);font-size:.95rem;margin-top:8px"></div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:18px">
+      <button class="btn btn-primary" onclick="requestRematch()">Rematch</button>
+      <button class="btn btn-secondary" onclick="playAgain()">New Game</button>
+    </div>
   </div>
 </div>
 
@@ -309,9 +314,9 @@ const S = {
   roomId: null, myName: null, oppName: null,
   selectedMode: 'pvp',
 };
-let prevBoard    = null;
-let isAnimating  = false;
-let animToken    = 0;
+let prevBoard   = null;
+let isAnimating = false;
+let animQueue   = [];   // { boardBefore, lastMove, finalState }
 
 // ── Pit index helpers ──────────────────────────────────────────────────────
 function myPitIndices()  {
@@ -438,6 +443,15 @@ function applyBoard(board, validSet, lastPit) {
   document.getElementById('opp-store-count').textContent = board[oppStoreIdx()];
   document.getElementById('my-score').textContent        = board[myStoreIdx()];
   document.getElementById('opp-score').textContent       = board[oppStoreIdx()];
+
+  const scores = state.scores || {0: 0, 1: 0};
+  const gp = state.games_played || 0;
+  if (gp >= 1) {
+    const myW  = scores[S.playerId]        || 0;
+    const oppW = scores[1 - S.playerId]    || 0;
+    document.getElementById('my-record').textContent  = `${myW}W–${oppW}L`;
+    document.getElementById('opp-record').textContent = `${oppW}W–${myW}L`;
+  }
 }
 
 // ── Full render (board + status) ───────────────────────────────────────────
@@ -470,7 +484,11 @@ function renderState(state) {
     statusEl.textContent = 'Game over';
     statusEl.className = '';
     showGameOver(state);
+    return;
   }
+
+  // Hide game-over overlay if a rematch has started
+  document.getElementById('game-over-overlay').classList.remove('show');
 }
 
 function showGameOver(state) {
@@ -485,7 +503,24 @@ function showGameOver(state) {
   document.getElementById('game-over-title').textContent = title;
   document.getElementById('game-over-title').style.color = color;
   document.getElementById('game-over-scores').textContent = `You: ${myS}  |  ${opp}: ${oppS}`;
+
+  const scores = state.scores || {0: 0, 1: 0};
+  const gp = state.games_played || 0;
+  const recEl = document.getElementById('game-over-record');
+  if (gp >= 1) {
+    const myW  = scores[S.playerId]  || 0;
+    const oppW = scores[1 - S.playerId] || 0;
+    recEl.textContent = `Series: ${myW} – ${oppW}`;
+  } else {
+    recEl.textContent = '';
+  }
+
   document.getElementById('game-over-overlay').classList.add('show');
+}
+
+function requestRematch() {
+  document.getElementById('game-over-overlay').classList.remove('show');
+  socket.emit('rematch');
 }
 
 // ── Pit click ──────────────────────────────────────────────────────────────
@@ -510,22 +545,15 @@ function distributionPath(board, player, pit) {
 }
 
 async function animateMove(boardBefore, lastMove, finalState) {
-  const token = ++animToken;
-  isAnimating = true;
-
   const { player, pit, captured } = lastMove;
-  const myPitsArr = PLAYER_PITS[player];
-  const myStore   = PLAYER_STORE[player];
 
-  // Build a working board starting from before the move
   const board = [...boardBefore];
   const path  = distributionPath(board, player, pit);
 
   // Empty the source pit
   board[pit] = 0;
   applyBoard(board, null, null);
-  await sleep(120);
-  if (token !== animToken) return;
+  await sleep(200);
 
   // Drop one stone at a time
   for (const dest of path) {
@@ -535,39 +563,39 @@ async function animateMove(boardBefore, lastMove, finalState) {
     const el = pitEl(dest);
     if (el) {
       el.classList.add('landing');
-      await sleep(160);
+      await sleep(300);
       el.classList.remove('landing');
     } else {
-      // It's a store — flash the store count
       const storeEl = dest === myStoreIdx()
         ? document.getElementById('my-store-el')
         : document.getElementById('opp-store-el');
       storeEl.style.borderColor = 'var(--gold)';
-      await sleep(160);
+      await sleep(300);
       storeEl.style.borderColor = '';
     }
-    if (token !== animToken) return;
   }
 
-  // If a capture happened, flash both pits then remove them
+  // If a capture happened, flash both pits then clear them
   if (captured) {
-    const lastDest = path[path.length - 1];
-    const opp      = OPPOSITE[lastDest];
-    await sleep(150);
-    if (token !== animToken) return;
-
+    const lastDest  = path[path.length - 1];
+    const opp       = OPPOSITE[lastDest];
+    await sleep(250);
     const captureEls = [pitEl(lastDest), pitEl(opp)].filter(Boolean);
     captureEls.forEach(el => el.classList.add('capture-flash'));
-    await sleep(350);
-    if (token !== animToken) return;
+    await sleep(500);
     captureEls.forEach(el => el.classList.remove('capture-flash'));
   }
 
-  await sleep(80);
-  if (token !== animToken) return;
-
-  isAnimating = false;
+  await sleep(150);
   renderState(finalState);
+
+  // Play next queued animation, if any
+  if (animQueue.length > 0) {
+    const next = animQueue.shift();
+    animateMove(next.boardBefore, next.lastMove, next.finalState);
+  } else {
+    isAnimating = false;
+  }
 }
 
 // ── Chat ───────────────────────────────────────────────────────────────────
@@ -625,17 +653,24 @@ socket.on('waiting', data => {
 });
 
 socket.on('state', state => {
-  if (prevBoard && state.last_move) {
-    // Cancel any in-progress animation and start a new one
-    const boardSnapshot = prevBoard;
-    prevBoard = state.board;
-    animateMove(boardSnapshot, state.last_move, state);
-  } else {
-    prevBoard = state.board;
-    renderState(state);
-  }
+  const boardSnapshot = prevBoard;
+  prevBoard = state.board;
+
   if (state.last_move && state.last_move.extra_turn) {
     addChat('system', 'Extra turn!');
+  }
+
+  if (boardSnapshot && state.last_move) {
+    const item = { boardBefore: boardSnapshot, lastMove: state.last_move, finalState: state };
+    if (isAnimating) {
+      animQueue.push(item);       // let current animation finish first
+    } else {
+      isAnimating = true;
+      animateMove(item.boardBefore, item.lastMove, item.finalState);
+    }
+  } else {
+    if (!isAnimating) renderState(state);
+    // if animating, the queued animation's renderState will show the latest board
   }
 });
 
