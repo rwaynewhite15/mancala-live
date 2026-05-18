@@ -14,6 +14,8 @@ from flask_socketio import SocketIO, join_room, emit
 
 INITIAL_STONES = 4
 NUM_PITS = 14
+AI_STARTUP_DELAY = 0.8
+AI_MOVE_DELAY = 0.5
 P1_PITS = list(range(0, 6))
 P1_STORE = 6
 P2_PITS = list(range(7, 13))
@@ -223,7 +225,7 @@ def _start_ai_task(room_id):
 
 
 def _ai_task(room_id, token):
-    time.sleep(0.8)
+    time.sleep(AI_STARTUP_DELAY)
     while True:
         room = rooms.get(room_id)
         if not room or room.get("ai_task_token") != token:
@@ -238,7 +240,7 @@ def _ai_task(room_id, token):
         _broadcast_state(room_id)
         if game.game_over or game.current_player != 1:
             return
-        time.sleep(0.5)
+        time.sleep(AI_MOVE_DELAY)
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
