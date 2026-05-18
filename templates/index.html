@@ -444,15 +444,6 @@ function applyBoard(board, validSet, lastPit) {
   document.getElementById('opp-store-count').textContent = board[oppStoreIdx()];
   document.getElementById('my-score').textContent        = board[myStoreIdx()];
   document.getElementById('opp-score').textContent       = board[oppStoreIdx()];
-
-  const scores = state.scores || {0: 0, 1: 0};
-  const gp = state.games_played || 0;
-  if (gp >= 1) {
-    const myW  = scores[S.playerId]        || 0;
-    const oppW = scores[1 - S.playerId]    || 0;
-    document.getElementById('my-record').textContent  = `${myW}W–${oppW}L`;
-    document.getElementById('opp-record').textContent = `${oppW}W–${myW}L`;
-  }
 }
 
 // ── Full render (board + status) ───────────────────────────────────────────
@@ -462,6 +453,16 @@ function renderState(state) {
   const lastPit  = state.last_move ? state.last_move.pit : null;
 
   applyBoard(state.board, validSet, lastPit);
+
+  // Win record in player bars (only after first game completes)
+  const scores = state.scores || {0: 0, 1: 0};
+  const gp = state.games_played || 0;
+  if (gp >= 1) {
+    const myW  = scores[S.playerId]     || 0;
+    const oppW = scores[1 - S.playerId] || 0;
+    document.getElementById('my-record').textContent  = `${myW}W–${oppW}L`;
+    document.getElementById('opp-record').textContent = `${oppW}W–${myW}L`;
+  }
 
   // Active player highlight
   document.getElementById('my-bar').classList.toggle('active-player',  myTurn && !state.game_over);
