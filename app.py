@@ -7,7 +7,8 @@ import random
 import string
 import time
 
-from flask import Flask, render_template, request
+import sqlite3
+from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, join_room, emit
 
 # ── Game constants ────────────────────────────────────────────────────────────
@@ -180,6 +181,61 @@ rooms = {}
 sid_to_room = {}  # sid -> room_id
 
 
+# ── Leaderboard DB ────────────────────────────────────────────────────────────
+
+_DATABASE_URL = os.environ.get("DATABASE_URL", "")
+if _DATABASE_URL.startswith("postgres://"):
+    _DATABASE_URL = _DATABASE_URL.replace("postgres://", "postgresql://", 1)
+_USE_PG = bool(_DATABASE_URL)
+_PH = "%s" if _USE_PG else "?"
+
+if _USE_PG:
+    import psycopg2
+
+
+def _db_conn():
+    if _USE_PG:
+        return psycopg2.connect(_DATABASE_URL)
+    return sqlite3.connect("leaderboard.db")
+
+
+def _init_db():
+    try:
+        conn = _db_conn()
+        cur = conn.cursor()
+        if _USE_PG:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS leaderboard (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    difficulty TEXT NOT NULL,
+                    wins INTEGER NOT NULL DEFAULT 0,
+                    losses INTEGER NOT NULL DEFAULT 0,
+                    ties INTEGER NOT NULL DEFAULT 0,
+                    submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """)
+        else:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS leaderboard (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    difficulty TEXT NOT NULL,
+                    wins INTEGER NOT NULL DEFAULT 0,
+                    losses INTEGER NOT NULL DEFAULT 0,
+                    ties INTEGER NOT NULL DEFAULT 0,
+                    submitted_at TEXT NOT NULL DEFAULT (datetime('now'))
+                )
+            """)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"DB init error: {e}")
+
+
+_init_db()
+
+
 def _make_room_id():
     chars = string.ascii_uppercase + string.digits
     while True:
@@ -253,6 +309,63 @@ def _ai_task(room_id, token):
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/leaderboard")
+def leaderboard():
+    difficulty = request.args.get("difficulty", "")
+    try:
+        conn = _db_conn()
+        cur = conn.cursor()
+        if difficulty in ("easy", "medium", "hard"):
+            cur.execute(
+                f"SELECT name, difficulty, wins, losses, ties FROM leaderboard "
+                f"WHERE difficulty = {_PH} ORDER BY wins DESC, losses ASC, ties DESC LIMIT 20",
+                (difficulty,)
+            )
+        else:
+            cur.execute(
+                "SELECT name, difficulty, wins, losses, ties FROM leaderboard "
+                "ORDER BY wins DESC, losses ASC, ties DESC LIMIT 20"
+            )
+        rows = cur.fetchall()
+        conn.close()
+        return jsonify([
+            {"name": r[0], "difficulty": r[1], "wins": r[2], "losses": r[3], "ties": r[4]}
+            for r in rows
+        ])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/submit_score", methods=["POST"])
+def submit_score():
+    data = request.get_json(force=True) or {}
+    name = str(data.get("name", "")).strip()[:20] or "Player"
+    difficulty = data.get("difficulty", "")
+    try:
+        wins   = int(data.get("wins",   0))
+        losses = int(data.get("losses", 0))
+        ties   = int(data.get("ties",   0))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid data"}), 400
+    if difficulty not in ("easy", "medium", "hard"):
+        return jsonify({"error": "Invalid difficulty"}), 400
+    if wins + losses + ties == 0:
+        return jsonify({"error": "No games played"}), 400
+    try:
+        conn = _db_conn()
+        cur = conn.cursor()
+        cur.execute(
+            f"INSERT INTO leaderboard (name, difficulty, wins, losses, ties) "
+            f"VALUES ({_PH}, {_PH}, {_PH}, {_PH}, {_PH})",
+            (name, difficulty, wins, losses, ties)
+        )
+        conn.commit()
+        conn.close()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ── Socket events ─────────────────────────────────────────────────────────────

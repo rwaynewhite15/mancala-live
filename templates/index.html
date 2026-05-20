@@ -108,6 +108,11 @@
     background: var(--teal); color: #fff;
     box-shadow: 0 4px 14px rgba(7,148,148,0.35);
   }
+  .btn-gold {
+    background: linear-gradient(135deg, var(--gold), #d4a500);
+    color: #041c1c; font-weight: 800;
+    box-shadow: 0 4px 14px rgba(254,205,26,0.35);
+  }
 
   .toggle { display: flex; border-radius: 10px; overflow: hidden; border: 1.5px solid var(--teal); margin-bottom: 14px; }
   .toggle-btn { flex: 1; padding: 10px; border: none; background: #052828; color: var(--muted); font-size: .95rem; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; }
@@ -284,6 +289,20 @@
     </div>
   </div>
 
+  <!-- ── LEADERBOARD (lobby card) ── -->
+  <div class="card" id="leaderboard-card" style="margin-top:0">
+    <h2>Leaderboard</h2>
+    <div class="toggle" id="lb-filter" style="margin-bottom:14px">
+      <button class="toggle-btn active" onclick="filterLeaderboard('all')">All</button>
+      <button class="toggle-btn" onclick="filterLeaderboard('easy')">Easy</button>
+      <button class="toggle-btn" onclick="filterLeaderboard('medium')">Medium</button>
+      <button class="toggle-btn" onclick="filterLeaderboard('hard')">Hard</button>
+    </div>
+    <div id="lb-body" style="min-height:52px">
+      <p style="color:var(--muted);text-align:center;font-size:.9rem">Loading...</p>
+    </div>
+  </div>
+
   <!-- ── WAITING ── -->
   <div id="screen-waiting" class="screen">
     <div class="card" style="text-align:center">
@@ -346,8 +365,9 @@
     <div id="game-over-title">Game Over</div>
     <div id="game-over-scores"></div>
     <div id="game-over-record" style="color:var(--gold);font-size:.95rem;margin-top:8px"></div>
-    <div style="display:flex;gap:10px;justify-content:center;margin-top:18px">
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="requestRematch()">Rematch</button>
+      <button class="btn btn-gold" id="post-lb-btn" onclick="submitScore()" style="display:none">Post to Leaderboard</button>
       <button class="btn btn-secondary" onclick="goToMainMenu()">Main Menu</button>
     </div>
   </div>
@@ -378,6 +398,8 @@ let animQueue          = [];
 let latestStateSeq     = 0;
 let lastGameSummarized = -1;
 let animationVersion   = 0;
+let lastGameOverState  = null;
+let lbFilter           = 'all';
 
 // ── Pit index helpers ──────────────────────────────────────────────────────
 function myPitIndices()  {
@@ -466,6 +488,74 @@ function goToMainMenu() {
   cancelAnimations();
   document.getElementById('game-over-overlay').classList.remove('show');
   showScreen('lobby');
+  loadLeaderboard();
+}
+
+// ── Leaderboard ────────────────────────────────────────────────────────────
+function filterLeaderboard(diff) {
+  lbFilter = diff;
+  document.querySelectorAll('#lb-filter .toggle-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', ['all','easy','medium','hard'][i] === diff);
+  });
+  loadLeaderboard();
+}
+
+async function loadLeaderboard() {
+  const body = document.getElementById('lb-body');
+  if (!body) return;
+  body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem">Loading...</p>';
+  try {
+    const url = lbFilter === 'all' ? '/leaderboard' : `/leaderboard?difficulty=${lbFilter}`;
+    const res  = await fetch(url);
+    const rows = await res.json();
+    if (!Array.isArray(rows) || !rows.length) {
+      body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem">No entries yet — be the first!</p>';
+      return;
+    }
+    const trs = rows.map((r, i) => `
+      <tr style="background:${i%2===0?'rgba(255,255,255,0.04)':'transparent'}">
+        <td style="padding:5px 8px;color:var(--muted)">${i+1}</td>
+        <td style="padding:5px 8px;font-weight:700">${escHtml(r.name)}</td>
+        <td style="padding:5px 8px;color:var(--muted);text-transform:capitalize">${r.difficulty}</td>
+        <td style="padding:5px 8px;text-align:right;color:#50d080;font-weight:700">${r.wins}</td>
+        <td style="padding:5px 8px;text-align:right;color:#e05030">${r.losses}</td>
+        <td style="padding:5px 8px;text-align:right;color:var(--muted)">${r.ties}</td>
+      </tr>`).join('');
+    body.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+        <thead><tr style="border-bottom:1px solid #0e4040">
+          ${['#','Name','Diff','W','L','T'].map((h,i) =>
+            `<th style="padding:4px 8px;text-align:${i>=3?'right':'left'};color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:1px;font-weight:600">${h}</th>`
+          ).join('')}
+        </tr></thead>
+        <tbody>${trs}</tbody>
+      </table>`;
+  } catch(e) {
+    body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem">Could not load leaderboard.</p>';
+  }
+}
+
+async function submitScore() {
+  if (!lastGameOverState) { goToMainMenu(); return; }
+  const scores = lastGameOverState.scores || {0:0, 1:0};
+  const gp     = lastGameOverState.games_played || 0;
+  const myW    = scores[S.playerId]     || 0;
+  const oppW   = scores[1-S.playerId]   || 0;
+  const ties   = Math.max(0, gp - myW - oppW);
+
+  const btn = document.getElementById('post-lb-btn');
+  btn.disabled = true;
+  btn.textContent = 'Posting...';
+  try {
+    await fetch('/submit_score', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ name: S.myName || 'Player', difficulty: S.difficulty, wins: myW, losses: oppW, ties })
+    });
+  } catch(e) { /* silently ignore network errors */ }
+  btn.disabled = false;
+  btn.textContent = 'Post to Leaderboard';
+  goToMainMenu();
 }
 
 // ── Board setup ────────────────────────────────────────────────────────────
@@ -555,6 +645,9 @@ function renderState(state) {
 }
 
 function showGameOver(state) {
+  lastGameOverState = state;
+  document.getElementById('post-lb-btn').style.display = S.mode === 'ai' ? 'inline-block' : 'none';
+
   const myS  = state.board[myStoreIdx()];
   const oppS = state.board[oppStoreIdx()];
   const w    = state.winner;
@@ -810,6 +903,7 @@ socket.on('opponent_left', data => {
 // ── Init ───────────────────────────────────────────────────────────────────
 document.getElementById('name-input').addEventListener('keydown', e => { if(e.key==='Enter') createRoom(); });
 document.getElementById('room-code-input').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
+loadLeaderboard();
 </script>
 </body>
 </html>
