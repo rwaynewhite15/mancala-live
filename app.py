@@ -215,6 +215,37 @@ def _init_db():
                     submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS players (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT UNIQUE NOT NULL,
+                    display_name TEXT NOT NULL,
+                    elo INTEGER NOT NULL DEFAULT 1000,
+                    wins INTEGER NOT NULL DEFAULT 0,
+                    losses INTEGER NOT NULL DEFAULT 0,
+                    ties INTEGER NOT NULL DEFAULT 0,
+                    games_played INTEGER NOT NULL DEFAULT 0
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS pvp_games (
+                    id SERIAL PRIMARY KEY,
+                    p1_name TEXT NOT NULL,
+                    p2_name TEXT NOT NULL,
+                    p1_display TEXT NOT NULL,
+                    p2_display TEXT NOT NULL,
+                    p1_stones INTEGER NOT NULL,
+                    p2_stones INTEGER NOT NULL,
+                    winner_name TEXT,
+                    p1_elo_before INTEGER NOT NULL,
+                    p2_elo_before INTEGER NOT NULL,
+                    p1_elo_after INTEGER NOT NULL,
+                    p2_elo_after INTEGER NOT NULL,
+                    p1_elo_change INTEGER NOT NULL,
+                    p2_elo_change INTEGER NOT NULL,
+                    played_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """)
         else:
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS leaderboard (
@@ -225,6 +256,37 @@ def _init_db():
                     losses INTEGER NOT NULL DEFAULT 0,
                     ties INTEGER NOT NULL DEFAULT 0,
                     submitted_at TEXT NOT NULL DEFAULT (datetime('now'))
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS players (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT UNIQUE NOT NULL,
+                    display_name TEXT NOT NULL,
+                    elo INTEGER NOT NULL DEFAULT 1000,
+                    wins INTEGER NOT NULL DEFAULT 0,
+                    losses INTEGER NOT NULL DEFAULT 0,
+                    ties INTEGER NOT NULL DEFAULT 0,
+                    games_played INTEGER NOT NULL DEFAULT 0
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS pvp_games (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    p1_name TEXT NOT NULL,
+                    p2_name TEXT NOT NULL,
+                    p1_display TEXT NOT NULL,
+                    p2_display TEXT NOT NULL,
+                    p1_stones INTEGER NOT NULL,
+                    p2_stones INTEGER NOT NULL,
+                    winner_name TEXT,
+                    p1_elo_before INTEGER NOT NULL,
+                    p2_elo_before INTEGER NOT NULL,
+                    p1_elo_after INTEGER NOT NULL,
+                    p2_elo_after INTEGER NOT NULL,
+                    p1_elo_change INTEGER NOT NULL,
+                    p2_elo_change INTEGER NOT NULL,
+                    played_at TEXT NOT NULL DEFAULT (datetime('now'))
                 )
             """)
         conn.commit()
@@ -244,8 +306,60 @@ def _make_room_id():
             return code
 
 
+def _calc_elo(ra, rb, outcome_a, k=32):
+    ea = 1 / (1 + 10 ** ((rb - ra) / 400))
+    new_ra = round(ra + k * (outcome_a - ea))
+    new_rb = round(rb + k * ((1 - outcome_a) - (1 - ea)))
+    return new_ra, new_rb
+
+
+def _record_pvp_game(room):
+    if len(room["players"]) < 2:
+        return
+    p0, p1 = room["players"][0], room["players"][1]
+    game = room["game"]
+    p0_key, p1_key = p0["name"].lower(), p1["name"].lower()
+    p0_stones, p1_stones = game.board[P1_STORE], game.board[P2_STORE]
+    winner = game.winner
+    try:
+        conn = _db_conn()
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT name, elo FROM players WHERE name IN ({_PH},{_PH})",
+            (p0_key, p1_key)
+        )
+        elo_map = {r[0]: r[1] for r in cur.fetchall()}
+        ra, rb = elo_map.get(p0_key, 1000), elo_map.get(p1_key, 1000)
+        outcome = 1.0 if winner == 0 else (0.0 if winner == 1 else 0.5)
+        new_ra, new_rb = _calc_elo(ra, rb, outcome)
+        winner_key = None if winner is None else (p0_key if winner == 0 else p1_key)
+        p0_w, p0_l, p0_t = (1,0,0) if winner==0 else ((0,1,0) if winner==1 else (0,0,1))
+        p1_w, p1_l, p1_t = (1,0,0) if winner==1 else ((0,1,0) if winner==0 else (0,0,1))
+        upsert = (
+            f"INSERT INTO players (name,display_name,elo,wins,losses,ties,games_played) "
+            f"VALUES ({_PH},{_PH},{_PH},{_PH},{_PH},{_PH},1) "
+            f"ON CONFLICT (name) DO UPDATE SET "
+            f"display_name=EXCLUDED.display_name,elo=EXCLUDED.elo,"
+            f"wins=players.wins+EXCLUDED.wins,losses=players.losses+EXCLUDED.losses,"
+            f"ties=players.ties+EXCLUDED.ties,games_played=players.games_played+1"
+        )
+        cur.execute(upsert, (p0_key, p0["name"], new_ra, p0_w, p0_l, p0_t))
+        cur.execute(upsert, (p1_key, p1["name"], new_rb, p1_w, p1_l, p1_t))
+        cur.execute(
+            f"INSERT INTO pvp_games "
+            f"(p1_name,p2_name,p1_display,p2_display,p1_stones,p2_stones,winner_name,"
+            f"p1_elo_before,p2_elo_before,p1_elo_after,p2_elo_after,p1_elo_change,p2_elo_change) "
+            f"VALUES ({','.join([_PH]*13)})",
+            (p0_key, p1_key, p0["name"], p1["name"], p0_stones, p1_stones, winner_key,
+             ra, rb, new_ra, new_rb, new_ra-ra, new_rb-rb)
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"PvP record error: {e}")
+
+
 def _record_score(room):
-    """Call once when a game ends to tally the winner."""
     if room.get("score_recorded"):
         return
     room["score_recorded"] = True
@@ -253,6 +367,8 @@ def _record_score(room):
     winner = room["game"].winner
     if winner is not None:
         room["scores"][winner] += 1
+    if room["mode"] == "pvp":
+        _record_pvp_game(room)
 
 
 def _broadcast_state(room_id):
@@ -364,6 +480,81 @@ def submit_score():
         conn.commit()
         conn.close()
         return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/pvp/rankings")
+def pvp_rankings():
+    try:
+        conn = _db_conn()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT display_name, elo, wins, losses, ties, games_played "
+            "FROM players ORDER BY elo DESC LIMIT 20"
+        )
+        rows = cur.fetchall()
+        conn.close()
+        return jsonify([
+            {"name": r[0], "elo": r[1], "wins": r[2], "losses": r[3], "ties": r[4], "games": r[5]}
+            for r in rows
+        ])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/pvp/history")
+def pvp_history():
+    try:
+        conn = _db_conn()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT p1_display, p2_display, p1_stones, p2_stones, winner_name, "
+            "p1_elo_change, p2_elo_change, p1_elo_after, p2_elo_after, played_at "
+            "FROM pvp_games ORDER BY played_at DESC LIMIT 50"
+        )
+        rows = cur.fetchall()
+        conn.close()
+        return jsonify([{
+            "p1": r[0], "p2": r[1], "p1_stones": r[2], "p2_stones": r[3],
+            "winner": r[4], "p1_elo_change": r[5], "p2_elo_change": r[6],
+            "p1_elo": r[7], "p2_elo": r[8], "played_at": str(r[9])
+        } for r in rows])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/pvp/player/<name>")
+def pvp_player(name):
+    key = name.strip().lower()
+    try:
+        conn = _db_conn()
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT display_name, elo, wins, losses, ties, games_played FROM players WHERE name = {_PH}",
+            (key,)
+        )
+        player = cur.fetchone()
+        if not player:
+            return jsonify({"error": "Player not found"}), 404
+        cur.execute(
+            f"SELECT p1_display, p2_display, p1_stones, p2_stones, winner_name, "
+            f"p1_elo_change, p2_elo_change, p1_elo_after, p2_elo_after, played_at "
+            f"FROM pvp_games WHERE p1_name = {_PH} OR p2_name = {_PH} "
+            f"ORDER BY played_at DESC LIMIT 20",
+            (key, key)
+        )
+        games = cur.fetchall()
+        conn.close()
+        return jsonify({
+            "name": player[0], "elo": player[1],
+            "wins": player[2], "losses": player[3], "ties": player[4], "games": player[5],
+            "history": [{
+                "p1": g[0], "p2": g[1], "p1_stones": g[2], "p2_stones": g[3],
+                "winner": g[4], "p1_elo_change": g[5], "p2_elo_change": g[6],
+                "p1_elo": g[7], "p2_elo": g[8], "played_at": str(g[9])
+            } for g in games]
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
