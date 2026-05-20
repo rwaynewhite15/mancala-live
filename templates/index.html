@@ -382,6 +382,13 @@
         <button id="chat-send">Send</button>
       </div>
     </div>
+
+    <div class="card" id="game-lb-card" style="margin-top:0">
+      <h3 id="game-lb-title">Leaderboard</h3>
+      <div id="game-lb-body" style="min-height:40px">
+        <p style="color:var(--muted);text-align:center;font-size:.9rem">Loading...</p>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -608,6 +615,52 @@ function pvpGameRows(games, highlightName) {
       </div>
     </div>`;
   }).join('');
+}
+
+async function loadGameLeaderboard() {
+  const title = document.getElementById('game-lb-title');
+  const body  = document.getElementById('game-lb-body');
+  body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem">Loading...</p>';
+  try {
+    let rows, cols;
+    if (S.mode === 'ai') {
+      title.textContent = `Vs. AI — ${S.difficulty.charAt(0).toUpperCase()+S.difficulty.slice(1)} Leaderboard`;
+      rows = await fetch(`/leaderboard?difficulty=${S.difficulty}`).then(r => r.json());
+      if (!Array.isArray(rows) || !rows.length) { body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem">No entries yet.</p>'; return; }
+      rows = rows.slice(0, 5);
+      const trs = rows.map((r, i) => `
+        <tr style="background:${i%2===0?'rgba(255,255,255,0.04)':'transparent'}">
+          <td style="padding:4px 8px;color:var(--muted)">${i+1}</td>
+          <td style="padding:4px 8px;font-weight:700">${escHtml(r.name)}</td>
+          <td style="padding:4px 8px;text-align:right;color:#50d080;font-weight:700">${r.wins}</td>
+          <td style="padding:4px 8px;text-align:right;color:#e05030">${r.losses}</td>
+          <td style="padding:4px 8px;text-align:right;color:var(--muted)">${r.ties}</td>
+        </tr>`).join('');
+      cols = ['#','Name','W','L','T'];
+      body.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:.83rem">
+        <thead><tr style="border-bottom:1px solid #0e4040">${cols.map((h,i)=>`<th style="padding:3px 8px;text-align:${i>=2?'right':'left'};color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:1px;font-weight:600">${h}</th>`).join('')}</tr></thead>
+        <tbody>${trs}</tbody></table>`;
+    } else {
+      title.textContent = 'Vs. Player Rankings';
+      rows = await fetch('/pvp/rankings').then(r => r.json());
+      if (!Array.isArray(rows) || !rows.length) { body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem">No players yet.</p>'; return; }
+      rows = rows.slice(0, 5);
+      const trs = rows.map((r, i) => `
+        <tr style="background:${i%2===0?'rgba(255,255,255,0.04)':'transparent'}">
+          <td style="padding:4px 8px;color:var(--muted)">${i+1}</td>
+          <td style="padding:4px 8px;font-weight:700">${escHtml(r.name)}</td>
+          <td style="padding:4px 8px;color:var(--gold);font-weight:800">${r.elo}</td>
+          <td style="padding:4px 8px;text-align:right;color:#50d080;font-weight:700">${r.wins}</td>
+          <td style="padding:4px 8px;text-align:right;color:#e05030">${r.losses}</td>
+        </tr>`).join('');
+      cols = ['#','Name','ELO','W','L'];
+      body.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:.83rem">
+        <thead><tr style="border-bottom:1px solid #0e4040">${cols.map((h,i)=>`<th style="padding:3px 8px;text-align:${i>=2?'right':'left'};color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:1px;font-weight:600">${h}</th>`).join('')}</tr></thead>
+        <tbody>${trs}</tbody></table>`;
+    }
+  } catch(e) {
+    body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem">Could not load.</p>';
+  }
 }
 
 async function loadPvpRankings() {
@@ -976,6 +1029,7 @@ socket.on('joined', data => {
   buildBoard();
   if (data.mode !== 'pvp' || data.opponent) {
     showScreen('game');
+    loadGameLeaderboard();
     const fp = data.first_player;
     const whoFirst = fp === S.playerId ? 'You go first'
       : (data.mode === 'ai' ? 'AI goes first' : `${S.oppName} goes first`);
