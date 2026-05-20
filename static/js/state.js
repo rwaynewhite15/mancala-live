@@ -1,0 +1,9 @@
+const S = { playerId: null, mode: null, difficulty: null, roomId: null, myName: null, oppName: null, selectedMode: 'pvp' };
+let prevBoard = null;
+let isAnimating = false;
+let animQueue = [];
+let latestStateSeq = 0;
+let lastGameSummarized = -1;
+let animationVersion = 0;
+let lastGameOverState = null;
+let lbFilter = 'all';
