@@ -290,7 +290,7 @@
   </div>
 
   <!-- ── LEADERBOARD (lobby card) ── -->
-  <div class="card" id="leaderboard-card" style="margin-top:0">
+  <div class="card hidden" id="leaderboard-card" style="margin-top:0">
     <h2>Vs. AI Leaderboard</h2>
     <div class="toggle" id="lb-filter" style="margin-bottom:14px">
       <button class="toggle-btn active" onclick="filterLeaderboard('all')">All</button>
@@ -478,6 +478,10 @@ function selectMode(m) {
   document.getElementById('difficulty-row').classList.toggle('hidden', m!=='ai');
   document.getElementById('first-move-opp').textContent =
     m === 'ai' ? 'AI goes first' : 'Opponent goes first';
+  document.getElementById('leaderboard-card').classList.toggle('hidden', m==='pvp');
+  document.getElementById('pvp-card').classList.toggle('hidden', m==='ai');
+  if (m === 'ai') loadLeaderboard();
+  else loadPvpRankings();
 }
 function showError(msg) {
   const el = document.getElementById('error-banner');
@@ -515,8 +519,8 @@ function goToMainMenu() {
   cancelAnimations();
   document.getElementById('game-over-overlay').classList.remove('show');
   showScreen('lobby');
-  loadLeaderboard();
-  loadPvpRankings();
+  if (S.selectedMode === 'ai') loadLeaderboard();
+  else loadPvpRankings();
 }
 
 // ── Leaderboard ────────────────────────────────────────────────────────────
@@ -1047,8 +1051,7 @@ socket.on('opponent_left', data => {
 document.getElementById('name-input').addEventListener('keydown', e => { if(e.key==='Enter') createRoom(); });
 document.getElementById('room-code-input').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 document.getElementById('pvp-lookup-input').addEventListener('keydown', e => { if(e.key==='Enter') lookupPlayer(); });
-loadLeaderboard();
-loadPvpRankings();
+loadPvpRankings(); // PvP is the default selected mode
 </script>
 </body>
 </html>
