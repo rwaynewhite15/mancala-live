@@ -187,7 +187,7 @@ async function loadGameLeaderboard() {
   try {
     let rows, cols;
     if (S.mode === 'ai') {
-      title.textContent = `Vs. AI — ${S.difficulty.charAt(0).toUpperCase()+S.difficulty.slice(1)} Leaderboard`;
+      title.textContent = `PvAI ${S.difficulty.charAt(0).toUpperCase()+S.difficulty.slice(1)} Leaderboard`;
       rows = await fetch(`/leaderboard?difficulty=${S.difficulty}`).then(r => r.json());
       if (!Array.isArray(rows) || !rows.length) { body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem">No entries yet.</p>'; return; }
       rows = rows.slice(0, 5);
@@ -204,7 +204,7 @@ async function loadGameLeaderboard() {
         <thead><tr style="border-bottom:1px solid #0e4040">${cols.map((h,i)=>`<th style="padding:3px 8px;text-align:${i>=2?'right':'left'};color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:1px;font-weight:600">${h}</th>`).join('')}</tr></thead>
         <tbody>${trs}</tbody></table>`;
     } else {
-      title.textContent = 'Vs. Player Rankings';
+      title.textContent = 'PvP Rankings';
       rows = await fetch('/pvp/rankings').then(r => r.json());
       if (!Array.isArray(rows) || !rows.length) { body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem">No players yet.</p>'; return; }
       rows = rows.slice(0, 5);
