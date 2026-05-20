@@ -82,6 +82,7 @@ function pvpTab(tab) {
   });
   if (tab === 'rankings') loadPvpRankings();
   else if (tab === 'history') loadPvpHistory();
+  else if (tab === 'lookup') loadPlayerList();
 }
 
 function pvpGameRows(games, highlightName) {
@@ -152,9 +153,35 @@ async function loadPvpHistory() {
   }
 }
 
-async function lookupPlayer() {
-  const name = document.getElementById('pvp-lookup-input').value.trim();
+async function loadPlayerList() {
+  const container = document.getElementById('pvp-player-list');
+  if (!container) return;
+  container.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.85rem;margin:6px 0">Loading players...</p>';
+  try {
+    const rows = await fetch('/pvp/rankings').then(r => r.json());
+    if (!Array.isArray(rows) || !rows.length) {
+      container.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.85rem;margin:6px 0">No players yet.</p>';
+      return;
+    }
+    container.innerHTML = `
+      <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-weight:600">All Players</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+        ${rows.map(r => `<button data-name="${escHtml(r.name)}" style="background:#052828;border:1.5px solid #0e4040;border-radius:8px;padding:6px 10px;color:var(--cream);font-size:.85rem;cursor:pointer;transition:border-color .15s">${escHtml(r.name)} <span style="color:var(--gold);font-weight:700">${r.elo}</span></button>`).join('')}
+      </div>`;
+    container.querySelectorAll('button[data-name]').forEach(btn => {
+      btn.addEventListener('mouseover', () => btn.style.borderColor = 'var(--teal)');
+      btn.addEventListener('mouseout',  () => btn.style.borderColor = '#0e4040');
+      btn.addEventListener('click', () => lookupPlayer(btn.dataset.name));
+    });
+  } catch(e) {
+    container.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.85rem;margin:6px 0">Could not load.</p>';
+  }
+}
+
+async function lookupPlayer(nameArg) {
+  const name = (nameArg || document.getElementById('pvp-lookup-input').value).trim();
   if (!name) return;
+  document.getElementById('pvp-lookup-input').value = name;
   const body = document.getElementById('pvp-lookup-body');
   body.innerHTML = '<p style="color:var(--muted);font-size:.9rem">Searching...</p>';
   try {
@@ -215,8 +242,9 @@ async function loadGameLeaderboard() {
           <td style="padding:4px 8px;color:var(--gold);font-weight:800">${r.elo}</td>
           <td style="padding:4px 8px;text-align:right;color:#50d080;font-weight:700">${r.wins}</td>
           <td style="padding:4px 8px;text-align:right;color:#e05030">${r.losses}</td>
+          <td style="padding:4px 8px;text-align:right;color:var(--muted)">${r.ties}</td>
         </tr>`).join('');
-      cols = ['#','Name','ELO','W','L'];
+      cols = ['#','Name','ELO','W','L','T'];
       body.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:.83rem">
         <thead><tr style="border-bottom:1px solid #0e4040">${cols.map((h,i)=>`<th style="padding:3px 8px;text-align:${i>=2?'right':'left'};color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:1px;font-weight:600">${h}</th>`).join('')}</tr></thead>
         <tbody>${trs}</tbody></table>`;
