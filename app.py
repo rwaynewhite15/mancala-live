@@ -103,6 +103,11 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/ping")
+def ping():
+    return jsonify({"ok": True})
+
+
 @app.route("/leaderboard")
 def leaderboard():
     difficulty = request.args.get("difficulty", "")
