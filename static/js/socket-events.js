@@ -54,6 +54,7 @@ socket.on('new_game', data => {
   const whoFirst = fp === S.playerId ? 'You go first'
     : (S.mode === 'ai' ? 'AI goes first' : `${S.oppName || 'Opponent'} goes first`);
   addChat('system', `Rematch! ${whoFirst}.`);
+  loadGameLeaderboard();
 });
 
 socket.on('state', state => {
