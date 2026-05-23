@@ -14,7 +14,7 @@ from game import (INITIAL_STONES, NUM_PITS, AI_STARTUP_DELAY, AI_MOVE_DELAY,
                   P1_PITS, P1_STORE, P2_PITS, P2_STORE,
                   PLAYER_PITS, PLAYER_STORE, OPPOSITE, MancalaGame)
 from ai import get_ai_move
-from db import _db_conn, _PH, _record_pvp_game
+from db import _db_conn, _PH, _USE_PG, _record_pvp_game
 
 # ── Flask / SocketIO setup ────────────────────────────────────────────────────
 
@@ -116,13 +116,13 @@ def leaderboard():
         cur = conn.cursor()
         if difficulty in ("easy", "medium", "hard"):
             cur.execute(
-                f"SELECT name, difficulty, wins, losses, ties FROM leaderboard "
+                f"SELECT display_name, difficulty, wins, losses, ties FROM leaderboard "
                 f"WHERE difficulty = {_PH} ORDER BY wins DESC, losses ASC, ties DESC LIMIT 20",
                 (difficulty,)
             )
         else:
             cur.execute(
-                "SELECT name, difficulty, wins, losses, ties FROM leaderboard "
+                "SELECT display_name, difficulty, wins, losses, ties FROM leaderboard "
                 "ORDER BY wins DESC, losses ASC, ties DESC LIMIT 20"
             )
         rows = cur.fetchall()
@@ -154,9 +154,16 @@ def submit_score():
         conn = _db_conn()
         cur = conn.cursor()
         cur.execute(
-            f"INSERT INTO leaderboard (name, difficulty, wins, losses, ties) "
-            f"VALUES ({_PH}, {_PH}, {_PH}, {_PH}, {_PH})",
-            (name, difficulty, wins, losses, ties)
+            f"INSERT INTO leaderboard "
+            f"(name_lower, display_name, difficulty, wins, losses, ties) "
+            f"VALUES ({_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH}) "
+            f"ON CONFLICT (name_lower, difficulty) DO UPDATE SET "
+            f"display_name = EXCLUDED.display_name, "
+            f"wins = leaderboard.wins + EXCLUDED.wins, "
+            f"losses = leaderboard.losses + EXCLUDED.losses, "
+            f"ties = leaderboard.ties + EXCLUDED.ties, "
+            f"submitted_at = " + ("NOW()" if _USE_PG else "datetime('now')"),
+            (name.lower(), name, difficulty, wins, losses, ties)
         )
         conn.commit()
         conn.close()
