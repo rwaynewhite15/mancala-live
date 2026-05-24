@@ -58,8 +58,12 @@ function goToMainMenu() {
   cancelAnimations();
   document.getElementById('game-over-overlay').classList.remove('show');
   showScreen('lobby');
-  if (S.selectedMode === 'ai') loadLeaderboard();
-  else loadPvpRankings();
+  if (S.selectedMode === 'ai') {
+    if (S.difficulty) filterLeaderboard(S.difficulty);
+    else loadLeaderboard();
+  } else {
+    loadPvpRankings();
+  }
 }
 function requestRematch() {
   document.getElementById('game-over-overlay').classList.remove('show');
