@@ -47,13 +47,22 @@ async function autoSubmitAIScore(state) {
   const wins   = w === S.playerId ? 1 : 0;
   const losses = (w !== null && w !== S.playerId) ? 1 : 0;
   const ties   = w === null ? 1 : 0;
+  const payload = { name: S.myName || 'Player', difficulty: S.difficulty, wins, losses, ties };
   try {
-    await fetch('/submit_score', {
+    const res = await fetch('/submit_score', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ name: S.myName || 'Player', difficulty: S.difficulty, wins, losses, ties })
+      body: JSON.stringify(payload)
     });
-  } catch(e) {}
+    if (!res.ok) {
+      const errText = await res.text().catch(() => String(res.status));
+      console.error('[leaderboard] submit_score failed:', res.status, errText);
+      addChat('system', `⚠ Score not saved (${res.status}): ${errText.slice(0, 200)}`);
+    }
+  } catch(e) {
+    console.error('[leaderboard] submit_score network error:', e);
+    addChat('system', `⚠ Score not saved (network error): ${e.message}`);
+  }
   loadGameLeaderboard();
 }
 
