@@ -42,34 +42,19 @@ async function loadLeaderboard() {
   }
 }
 
-async function submitScore() {
-  if (!lastGameOverState) { goToMainMenu(); return; }
-  const scores = lastGameOverState.scores || {0:0, 1:0};
-  const gp     = lastGameOverState.games_played || 0;
-  const myW    = scores[S.playerId]     || 0;
-  const oppW   = scores[1-S.playerId]   || 0;
-  const ties   = Math.max(0, gp - myW - oppW);
-
-  const btn = document.getElementById('post-lb-btn');
-  btn.disabled = true;
-  btn.textContent = 'Posting...';
+async function autoSubmitAIScore(state) {
+  const w      = state.winner;
+  const wins   = w === S.playerId ? 1 : 0;
+  const losses = (w !== null && w !== S.playerId) ? 1 : 0;
+  const ties   = w === null ? 1 : 0;
   try {
     await fetch('/submit_score', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ name: S.myName || 'Player', difficulty: S.difficulty, wins: myW, losses: oppW, ties })
+      body: JSON.stringify({ name: S.myName || 'Player', difficulty: S.difficulty, wins, losses, ties })
     });
-  } catch(e) { /* silently ignore network errors */ }
-  btn.disabled = false;
-  btn.textContent = 'Post to Leaderboard';
-  // Filter lobby leaderboard to the played difficulty so the user sees their updated entry
-  if (S.difficulty && ['easy','medium','hard'].includes(S.difficulty)) {
-    lbFilter = S.difficulty;
-    document.querySelectorAll('#lb-filter .toggle-btn').forEach((b, i) => {
-      b.classList.toggle('active', ['all','easy','medium','hard'][i] === lbFilter);
-    });
-  }
-  goToMainMenu();
+  } catch(e) {}
+  loadGameLeaderboard();
 }
 
 // ── PvP card ───────────────────────────────────────────────────────────────

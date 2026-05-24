@@ -117,7 +117,6 @@ function renderState(state) {
 
 function showGameOver(state) {
   lastGameOverState = state;
-  document.getElementById('post-lb-btn').style.display = S.mode === 'ai' ? 'inline-block' : 'none';
 
   const myS  = state.board[myStoreIdx()];
   const oppS = state.board[oppStoreIdx()];
@@ -144,7 +143,7 @@ function showGameOver(state) {
 
   document.getElementById('game-over-overlay').classList.add('show');
 
-  // Post summary to chat once per completed game
+  // Once per completed game: post chat summary and auto-submit AI score
   if (gp !== lastGameSummarized) {
     lastGameSummarized = gp;
     const myS   = state.board[myStoreIdx()];
@@ -156,6 +155,7 @@ function showGameOver(state) {
     let summary = `Game ${gp}: You ${myS} – ${opp} ${oppS} | ${result}`;
     if (gp >= 1) summary += ` | Series ${myW}–${oppW}`;
     addChat('system', summary);
+    if (S.mode === 'ai') autoSubmitAIScore(state);
   }
 }
 
