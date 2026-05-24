@@ -180,9 +180,8 @@ async function loadPlayerList() {
 }
 
 async function lookupPlayer(nameArg) {
-  const name = (nameArg || document.getElementById('pvp-lookup-input').value).trim();
+  const name = String(nameArg || '').trim();
   if (!name) return;
-  document.getElementById('pvp-lookup-input').value = name;
   const body = document.getElementById('pvp-lookup-body');
   body.innerHTML = '<p style="color:var(--muted);font-size:.9rem">Searching...</p>';
   try {
