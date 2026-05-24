@@ -62,6 +62,13 @@ async function submitScore() {
   } catch(e) { /* silently ignore network errors */ }
   btn.disabled = false;
   btn.textContent = 'Post to Leaderboard';
+  // Filter lobby leaderboard to the played difficulty so the user sees their updated entry
+  if (S.difficulty && ['easy','medium','hard'].includes(S.difficulty)) {
+    lbFilter = S.difficulty;
+    document.querySelectorAll('#lb-filter .toggle-btn').forEach((b, i) => {
+      b.classList.toggle('active', ['all','easy','medium','hard'][i] === lbFilter);
+    });
+  }
   goToMainMenu();
 }
 
