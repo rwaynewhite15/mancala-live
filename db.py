@@ -50,47 +50,19 @@ def _column_exists(cur, table, column):
     return any(row[1] == column for row in cur.fetchall())
 
 
-def _maybe_rename_old_leaderboard(cur):
-    """If `leaderboard` is still the legacy schema, stash it as `leaderboard_old`."""
-    if not _table_exists(cur, 'leaderboard'):
-        return
-    if _column_exists(cur, 'leaderboard', 'name_lower'):
-        return
+def _drop_stale_leaderboard(cur):
+    """Drop leaderboard (and leaderboard_old) if the schema is missing name_lower."""
     if _table_exists(cur, 'leaderboard_old'):
-        # A previous attempt already stashed the real data; the current
-        # `leaderboard` is a stale copy created by old code after the rename.
+        cur.execute("DROP TABLE leaderboard_old")
+    if _table_exists(cur, 'leaderboard') and not _column_exists(cur, 'leaderboard', 'name_lower'):
         cur.execute("DROP TABLE leaderboard")
-        return
-    cur.execute("ALTER TABLE leaderboard RENAME TO leaderboard_old")
-
-
-def _maybe_copy_old_leaderboard(cur):
-    """Aggregate legacy rows into the new (name_lower, difficulty) unique rows."""
-    if not _table_exists(cur, 'leaderboard_old'):
-        return
-    cur.execute("DELETE FROM leaderboard")
-    cur.execute("""
-        INSERT INTO leaderboard
-            (name_lower, display_name, difficulty, wins, losses, ties, submitted_at)
-        SELECT LOWER(o.name),
-               (SELECT o2.name FROM leaderboard_old o2
-                WHERE LOWER(o2.name) = LOWER(o.name) AND o2.difficulty = o.difficulty
-                ORDER BY o2.submitted_at DESC LIMIT 1),
-               o.difficulty,
-               SUM(o.wins), SUM(o.losses), SUM(o.ties),
-               MAX(o.submitted_at)
-        FROM leaderboard_old o
-        WHERE o.name IS NOT NULL AND o.name != ''
-        GROUP BY LOWER(o.name), o.difficulty
-    """)
-    cur.execute("DROP TABLE leaderboard_old")
 
 
 def _init_db():
     try:
         conn = _db_conn()
         cur = conn.cursor()
-        _maybe_rename_old_leaderboard(cur)
+        _drop_stale_leaderboard(cur)
         if _USE_PG:
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS leaderboard (
@@ -181,7 +153,6 @@ def _init_db():
                     played_at TEXT NOT NULL DEFAULT (datetime('now'))
                 )
             """)
-        _maybe_copy_old_leaderboard(cur)
         conn.commit()
         conn.close()
     except Exception as e:
