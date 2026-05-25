@@ -444,6 +444,21 @@ def check_player_name():
         return jsonify({"exists": False, "protected": False})
 
 
+@app.route("/players/set_password", methods=["POST"])
+def set_player_password():
+    data     = request.get_json(force=True) or {}
+    name     = str(data.get("name", "")).strip()[:20]
+    password = str(data.get("password", "")).strip()
+    if not name:
+        return jsonify({"error": "Name is required."}), 400
+    if not password:
+        return jsonify({"error": "Password cannot be empty."}), 400
+    err = _handle_player_auth(name, password)
+    if err:
+        return jsonify({"error": err}), 400
+    return jsonify({"ok": True})
+
+
 def _handle_player_auth(name, password):
     """Verify or set a player password. Returns an error string, or None if OK."""
     key = name.strip().lower()
