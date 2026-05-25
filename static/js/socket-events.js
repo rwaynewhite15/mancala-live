@@ -295,34 +295,54 @@ socket.on('connect', () => {
   }
 });
 
-// ── Rooms list for spectate tab ───────────────────────────────────────────
+// ── Rooms lists ───────────────────────────────────────────────────────────
 function renderRoomsList(roomsList) {
-  const body = document.getElementById('spec-rooms-body');
+  _renderJoinList(roomsList.filter(r => !r.started && r.mode === 'pvp'));
+  _renderSpectateList(roomsList.filter(r => r.started));
+}
+
+function _roomRow(r, actions) {
+  const players = (r.players || []).map(escHtml).join(' vs ') || '—';
+  const modeLabel = r.mode === 'ai' ? `vs AI (${r.difficulty || 'medium'})` : 'PvP';
+  const specCount = r.spectator_count ? ` · 👁 ${r.spectator_count}` : '';
+  const status = r.any_disconnected ? 'Player disconnected' : 'In progress';
+  const meta = r.started
+    ? `${modeLabel} · ${status}${specCount}`
+    : `${modeLabel}${specCount}`;
+  return `
+    <div class="room-row">
+      <div class="room-row-main">
+        <div class="room-row-players">${players}</div>
+        <div class="room-row-meta">${meta}</div>
+      </div>
+      <div class="room-row-actions">${actions}</div>
+    </div>`;
+}
+
+function _renderJoinList(waiting) {
+  const body = document.getElementById('join-rooms-body');
   if (!body) return;
-  if (!roomsList.length) {
-    body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem;padding:14px">No active rooms.</p>';
+  if (!waiting.length) {
+    body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem;padding:14px">No open games right now.</p>';
     return;
   }
-  const html = roomsList.map(r => {
-    const players = (r.players || []).map(escHtml).join(' vs ') || '—';
-    const status = !r.started ? 'Waiting for opponent'
-                  : (r.any_disconnected ? 'In progress (player disconnected)' : 'In progress');
-    const modeLabel = r.mode === 'ai' ? `vs AI (${r.difficulty || 'medium'})` : 'PvP';
-    const specCount = r.spectator_count ? ` · 👁 ${r.spectator_count}` : '';
+  body.innerHTML = waiting.map(r => {
     const code = escHtml(r.room_id);
-    const canJoin = !r.started && r.mode === 'pvp';
-    const joinBtn  = canJoin
-      ? `<button class="btn btn-primary room-row-btn" onclick="joinFromList('${code}')">Join</button>`
-      : '';
-    const watchBtn = `<button class="btn btn-secondary room-row-btn" onclick="spectateRoom('${code}')">Watch</button>`;
-    return `
-      <div class="room-row">
-        <div class="room-row-main">
-          <div class="room-row-players">${players}</div>
-          <div class="room-row-meta">${modeLabel} · ${code} · ${status}${specCount}</div>
-        </div>
-        <div class="room-row-actions">${joinBtn}${watchBtn}</div>
-      </div>`;
+    const joinBtn = `<button class="btn btn-primary room-row-btn" onclick="joinFromList('${code}')">Join</button>`;
+    return _roomRow(r, joinBtn);
   }).join('');
-  body.innerHTML = html;
+}
+
+function _renderSpectateList(active) {
+  const body = document.getElementById('spec-rooms-body');
+  if (!body) return;
+  if (!active.length) {
+    body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem;padding:14px">No games in progress.</p>';
+    return;
+  }
+  body.innerHTML = active.map(r => {
+    const code = escHtml(r.room_id);
+    const watchBtn = `<button class="btn btn-secondary room-row-btn" onclick="spectateRoom('${code}')">Watch</button>`;
+    return _roomRow(r, watchBtn);
+  }).join('');
 }
