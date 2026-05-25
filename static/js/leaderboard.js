@@ -254,17 +254,18 @@ async function loadGameLeaderboard() {
   }
 }
 
+let _playerNames = [];
+
 async function loadPlayerNames() {
   try {
-    const res   = await fetch('/players/names');
-    const names = await res.json();
-    const sel   = document.getElementById('name-select');
-    if (!sel || !Array.isArray(names)) return;
-    names.forEach(name => {
-      const opt = document.createElement('option');
-      opt.value = name;
-      opt.textContent = name;
-      sel.appendChild(opt);
-    });
+    const res = await fetch('/players/names');
+    const data = await res.json();
+    if (Array.isArray(data)) _playerNames = data;
   } catch(e) {}
+}
+
+function getPlayerNameSuggestions(query) {
+  if (!query) return _playerNames;
+  const q = query.toLowerCase();
+  return _playerNames.filter(n => n.toLowerCase().includes(q));
 }

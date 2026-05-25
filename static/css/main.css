@@ -76,16 +76,19 @@ select {
   transition: border-color .2s;
 }
 select:focus { border-color: var(--gold); }
-/* Listbox (name picker) */
-#name-select {
-  padding: 4px 0; max-height: 160px; overflow-y: auto;
-  scrollbar-width: thin; scrollbar-color: var(--teal) #052828;
+/* Name autocomplete suggestions */
+#name-suggestions {
+  position: absolute; left: 0; right: 0; top: calc(100% - 14px);
+  background: #052828; border: 1.5px solid var(--teal); border-top: none;
+  border-radius: 0 0 8px 8px; max-height: 180px; overflow-y: auto;
+  z-index: 50; scrollbar-width: thin; scrollbar-color: var(--teal) #052828;
 }
-#name-select option {
-  padding: 8px 14px; cursor: pointer;
+#name-suggestions .suggestion {
+  padding: 9px 14px; cursor: pointer; font-size: .95rem; color: var(--cream);
+  border-top: 1px solid #0a3535;
 }
-#name-select option:checked,
-#name-select option:hover  { background: var(--teal); color: #000; }
+#name-suggestions .suggestion:hover,
+#name-suggestions .suggestion.active { background: var(--teal); color: #000; }
 
 .btn {
   display: inline-block; padding: 11px 26px; border: none; border-radius: 10px;
