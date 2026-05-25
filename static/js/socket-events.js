@@ -298,17 +298,15 @@ socket.on('connect', () => {
 // ── Rooms lists ───────────────────────────────────────────────────────────
 function renderRoomsList(roomsList) {
   _renderJoinList(roomsList.filter(r => !r.started && r.mode === 'pvp'));
-  _renderSpectateList(roomsList.filter(r => r.started));
+  _renderSpectateList(roomsList);
 }
 
 function _roomRow(r, actions) {
   const players = (r.players || []).map(escHtml).join(' vs ') || '—';
   const modeLabel = r.mode === 'ai' ? `vs AI (${r.difficulty || 'medium'})` : 'PvP';
   const specCount = r.spectator_count ? ` · 👁 ${r.spectator_count}` : '';
-  const status = r.any_disconnected ? 'Player disconnected' : 'In progress';
-  const meta = r.started
-    ? `${modeLabel} · ${status}${specCount}`
-    : `${modeLabel}${specCount}`;
+  const status = !r.started ? 'Waiting' : (r.any_disconnected ? 'Player disconnected' : 'In progress');
+  const meta = `${modeLabel} · ${status}${specCount}`;
   return `
     <div class="room-row">
       <div class="room-row-main">
@@ -337,7 +335,7 @@ function _renderSpectateList(active) {
   const body = document.getElementById('spec-rooms-body');
   if (!body) return;
   if (!active.length) {
-    body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem;padding:14px">No games in progress.</p>';
+    body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem;padding:14px">No active rooms.</p>';
     return;
   }
   body.innerHTML = active.map(r => {
