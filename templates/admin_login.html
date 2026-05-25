@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin – Mancala</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #1a1a2e; color: #eee;
+         display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
+  .card { background: #16213e; border-radius: 12px; padding: 32px 24px; width: 100%; max-width: 360px; }
+  h1 { font-size: 1.4rem; margin-bottom: 24px; text-align: center; }
+  input[type=password] { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #444;
+                          background: #0f3460; color: #eee; font-size: 1rem; margin-bottom: 12px; }
+  button { width: 100%; padding: 12px; border-radius: 8px; border: none;
+           background: #e94560; color: #fff; font-size: 1rem; font-weight: bold; cursor: pointer; }
+  .error { color: #e94560; font-size: .9rem; margin-bottom: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Admin Login</h1>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <form method="POST" action="/admin">
+    <input type="password" name="password" placeholder="Password" autofocus>
+    <button type="submit">Sign In</button>
+  </form>
+</div>
+</body>
+</html>
