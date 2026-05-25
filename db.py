@@ -86,7 +86,8 @@ def _init_db():
                     wins INTEGER NOT NULL DEFAULT 0,
                     losses INTEGER NOT NULL DEFAULT 0,
                     ties INTEGER NOT NULL DEFAULT 0,
-                    games_played INTEGER NOT NULL DEFAULT 0
+                    games_played INTEGER NOT NULL DEFAULT 0,
+                    password_hash TEXT
                 )
             """)
             cur.execute("""
@@ -131,7 +132,8 @@ def _init_db():
                     wins INTEGER NOT NULL DEFAULT 0,
                     losses INTEGER NOT NULL DEFAULT 0,
                     ties INTEGER NOT NULL DEFAULT 0,
-                    games_played INTEGER NOT NULL DEFAULT 0
+                    games_played INTEGER NOT NULL DEFAULT 0,
+                    password_hash TEXT
                 )
             """)
             cur.execute("""
@@ -153,6 +155,9 @@ def _init_db():
                     played_at TEXT NOT NULL DEFAULT (datetime('now'))
                 )
             """)
+        # Migrate: add password_hash column to players if it's missing
+        if _table_exists(cur, 'players') and not _column_exists(cur, 'players', 'password_hash'):
+            cur.execute("ALTER TABLE players ADD COLUMN password_hash TEXT")
         conn.commit()
         conn.close()
     except Exception as e:

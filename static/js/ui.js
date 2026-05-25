@@ -50,14 +50,16 @@ function createRoom() {
   S.mode = S.selectedMode;
   S.difficulty = document.getElementById('difficulty-select').value;
   const firstPlayer = document.getElementById('first-move-select').value;
-  socket.emit('create_room', { name: S.myName, mode: S.mode, difficulty: S.difficulty, first_player: firstPlayer });
+  const password = document.getElementById('name-password').value;
+  socket.emit('create_room', { name: S.myName, mode: S.mode, difficulty: S.difficulty, first_player: firstPlayer, password });
 }
 function joinFromList(roomCode) {
   clearError();
   const code = String(roomCode || '').trim().toUpperCase();
   if (code.length !== 6) return;
   S.myName = getName();
-  socket.emit('join_room_request', { name: S.myName, room_id: code });
+  const password = document.getElementById('name-password').value;
+  socket.emit('join_room_request', { name: S.myName, room_id: code, password });
 }
 function spectateRoom(roomCode) {
   clearError();
