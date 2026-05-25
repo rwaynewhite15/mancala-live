@@ -76,6 +76,16 @@ select {
   transition: border-color .2s;
 }
 select:focus { border-color: var(--gold); }
+/* Listbox (name picker) */
+#name-select {
+  padding: 4px 0; max-height: 160px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--teal) #052828;
+}
+#name-select option {
+  padding: 8px 14px; cursor: pointer;
+}
+#name-select option:checked,
+#name-select option:hover  { background: var(--teal); color: #000; }
 
 .btn {
   display: inline-block; padding: 11px 26px; border: none; border-radius: 10px;
