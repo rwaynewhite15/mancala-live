@@ -3,34 +3,70 @@
   const input      = document.getElementById('name-input');
   const box        = document.getElementById('name-suggestions');
   const pwField    = document.getElementById('name-password');
+  const pwConfirm  = document.getElementById('name-password-confirm');
   const pwHint     = document.getElementById('password-hint');
+  const savePwBtn  = document.getElementById('save-password-btn');
   const protectBtn = document.getElementById('protect-name-btn');
   let activeIdx = -1;
 
-  // Show password field because name is protected
+  // Verify mode: existing protected name — one field, no confirm, no save button
   function requirePassword() {
     pwField.classList.remove('hidden');
+    pwConfirm.classList.add('hidden');
+    pwConfirm.value = '';
+    savePwBtn.classList.add('hidden');
     pwHint.textContent = '🔒 This name is password-protected';
     pwHint.style.color = 'var(--gold)';
     pwHint.classList.remove('hidden');
     protectBtn.classList.add('hidden');
   }
 
-  // Show optional protect button for unprotected / new names
+  // Set mode: new/unprotected name — two fields + Save Password button
+  function showSetPassword() {
+    protectBtn.classList.add('hidden');
+    pwField.classList.remove('hidden');
+    pwConfirm.classList.remove('hidden');
+    savePwBtn.classList.remove('hidden');
+    pwHint.textContent = 'Enter a password to protect this name (optional)';
+    pwHint.style.color = 'var(--muted)';
+    pwHint.classList.remove('hidden');
+    pwField.focus();
+  }
+
+  // Reset: hide everything password-related
   function offerProtect(nameEntered) {
     pwField.classList.add('hidden');
     pwField.value = '';
+    pwConfirm.classList.add('hidden');
+    pwConfirm.value = '';
+    savePwBtn.classList.add('hidden');
     pwHint.classList.add('hidden');
     protectBtn.classList.toggle('hidden', !nameEntered);
   }
 
-  protectBtn.addEventListener('click', () => {
-    protectBtn.classList.add('hidden');
-    pwField.classList.remove('hidden');
-    pwHint.textContent = 'Create a password to protect this name (optional)';
-    pwHint.style.color = 'var(--muted)';
-    pwHint.classList.remove('hidden');
-    pwField.focus();
+  protectBtn.addEventListener('click', showSetPassword);
+
+  savePwBtn.addEventListener('click', async () => {
+    const name = input.value.trim();
+    const pw   = pwField.value;
+    if (!name) { showError('Enter your name first.'); return; }
+    if (!pw)   { showError('Enter a password.'); return; }
+    if (pw !== pwConfirm.value) { showError('Passwords do not match.'); return; }
+    try {
+      const res  = await fetch('/players/set_password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, password: pw }),
+      });
+      const data = await res.json();
+      if (data.error) { showError(data.error); return; }
+      // Success — show confirmation and reset to verify state
+      pwConfirm.classList.add('hidden');
+      pwConfirm.value = '';
+      savePwBtn.classList.add('hidden');
+      pwHint.textContent = '🔒 Password saved — required next time you use this name';
+      pwHint.style.color = 'var(--gold)';
+    } catch(e) { showError('Could not save password. Try again.'); }
   });
 
   let nameCheckTimer = null;

@@ -58,10 +58,11 @@
     {% for p in players %}
     {% set pkey = p[0] %}
     {% set pname = p[1] %}
+    {% set protected = p[7] %}
     <tr>
       <td>{{ loop.index }}</td>
       <td>
-        <span id="name-{{ loop.index }}">{{ pname }}</span>
+        <span id="name-{{ loop.index }}">{{ pname }}{% if protected %} <span class="tag" style="color:var(--gold)">🔒</span>{% endif %}</span>
         <div id="rename-form-{{ loop.index }}" style="display:none;margin-top:6px">
           <form method="POST" action="/admin/rename_player" style="display:flex;gap:6px;flex-wrap:wrap">
             <input type="hidden" name="old_key" value="{{ pkey }}">
@@ -78,9 +79,15 @@
       <td class="loss">{{ p[4] }}</td>
       <td class="tie">{{ p[5] }}</td>
       <td class="hide-sm">{{ p[6] }}</td>
-      <td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <button class="btn btn-info" style="padding:4px 10px;font-size:.78rem"
                 onclick="document.getElementById('rename-form-{{ loop.index }}').style.display='block'">Rename</button>
+        {% if protected %}
+        <form method="POST" action="/admin/unlock_player/{{ pkey }}"
+              onsubmit="return confirm('Remove password for {{ pname }}?')">
+          <button class="btn btn-secondary" style="padding:4px 10px;font-size:.78rem" type="submit">Unlock</button>
+        </form>
+        {% endif %}
       </td>
     </tr>
     {% else %}

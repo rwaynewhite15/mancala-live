@@ -43,6 +43,15 @@ function clearError() { document.getElementById('error-banner').style.display = 
 // ── Lobby actions ──────────────────────────────────────────────────────────
 function getName() { return document.getElementById('name-input').value.trim() || 'Player'; }
 function getSpectatorName() { return document.getElementById('name-input').value.trim(); }
+function getPasswordOrError() {
+  const pw      = document.getElementById('name-password').value;
+  const confirm = document.getElementById('name-password-confirm');
+  if (!confirm.classList.contains('hidden') && pw !== confirm.value) {
+    showError('Passwords do not match.');
+    return null;
+  }
+  return pw;
+}
 
 function createRoom() {
   clearError();
@@ -50,7 +59,8 @@ function createRoom() {
   S.mode = S.selectedMode;
   S.difficulty = document.getElementById('difficulty-select').value;
   const firstPlayer = document.getElementById('first-move-select').value;
-  const password = document.getElementById('name-password').value;
+  const password = getPasswordOrError();
+  if (password === null) return;
   socket.emit('create_room', { name: S.myName, mode: S.mode, difficulty: S.difficulty, first_player: firstPlayer, password });
 }
 function joinFromList(roomCode) {
@@ -58,7 +68,8 @@ function joinFromList(roomCode) {
   const code = String(roomCode || '').trim().toUpperCase();
   if (code.length !== 6) return;
   S.myName = getName();
-  const password = document.getElementById('name-password').value;
+  const password = getPasswordOrError();
+  if (password === null) return;
   socket.emit('join_room_request', { name: S.myName, room_id: code, password });
 }
 function spectateRoom(roomCode) {
@@ -67,7 +78,8 @@ function spectateRoom(roomCode) {
   if (code.length !== 6) return;
   // Spectator name is taken from the name input; server fills in "Spectator N" if blank.
   S.myName = getSpectatorName();
-  const password = document.getElementById('name-password').value;
+  const password = getPasswordOrError();
+  if (password === null) return;
   socket.emit('spectate_room', { name: S.myName || '', room_id: code, password });
 }
 function copyCode() {

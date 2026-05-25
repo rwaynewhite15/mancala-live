@@ -444,6 +444,21 @@ def check_player_name():
         return jsonify({"exists": False, "protected": False})
 
 
+@app.route("/players/set_password", methods=["POST"])
+def set_player_password():
+    data     = request.get_json(force=True) or {}
+    name     = str(data.get("name", "")).strip()[:20]
+    password = str(data.get("password", "")).strip()
+    if not name:
+        return jsonify({"error": "Name is required."}), 400
+    if not password:
+        return jsonify({"error": "Password cannot be empty."}), 400
+    err = _handle_player_auth(name, password)
+    if err:
+        return jsonify({"error": err}), 400
+    return jsonify({"ok": True})
+
+
 def _handle_player_auth(name, password):
     """Verify or set a player password. Returns an error string, or None if OK."""
     key = name.strip().lower()
@@ -576,7 +591,8 @@ def admin_panel():
         )
         games = cur.fetchall()
         cur.execute(
-            "SELECT name, display_name, elo, wins, losses, ties, games_played "
+            "SELECT name, display_name, elo, wins, losses, ties, games_played, "
+            "CASE WHEN password_hash IS NOT NULL AND password_hash <> '' THEN 1 ELSE 0 END "
             "FROM players ORDER BY elo DESC LIMIT 30"
         )
         players = cur.fetchall()
@@ -648,6 +664,21 @@ def admin_rename_player():
             f"UPDATE leaderboard SET name_lower={_PH}, display_name={_PH} WHERE name_lower={_PH}",
             (new_key, new_display, old_key)
         )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        return f"DB error: {e}", 500
+    return redirect(url_for("admin_panel"))
+
+
+@app.route("/admin/unlock_player/<key>", methods=["POST"])
+def admin_unlock_player(key):
+    if not ADMIN_PASSWORD or not _admin_authed():
+        return redirect(url_for("admin_panel"))
+    try:
+        conn = _db_conn()
+        cur  = conn.cursor()
+        cur.execute(f"UPDATE players SET password_hash=NULL WHERE name={_PH}", (key,))
         conn.commit()
         conn.close()
     except Exception as e:
