@@ -30,7 +30,6 @@ socket.on('joined', data => {
 
   document.getElementById('my-name-text').textContent  = S.myName || 'You';
   document.getElementById('opp-name-text').textContent = S.oppName;
-  document.getElementById('gh-room').textContent  = `Room: ${S.roomId}`;
   document.getElementById('gh-mode').textContent  =
     data.mode === 'ai' ? `vs AI (${data.difficulty})` : `vs ${S.oppName}`;
 
@@ -79,7 +78,6 @@ socket.on('spectator_joined', data => {
   document.getElementById('opp-record').textContent = '';
   document.getElementById('my-name-text').textContent  = data.p0_name || 'Player 1';
   document.getElementById('opp-name-text').textContent = data.p1_name || 'Waiting…';
-  document.getElementById('gh-room').textContent = `Room: ${S.roomId} (spectating)`;
   const p1Label = data.p1_name || 'opponent';
   document.getElementById('gh-mode').textContent =
     data.mode === 'ai' ? `Spectating: ${data.p0_name} vs AI (${data.difficulty})`
@@ -263,7 +261,7 @@ socket.on('rejoin_failed', data => {
 
 socket.on('room_closed', data => {
   if (!onGameScreen()) return;
-  addChat('system', `Room closed (${data.reason || 'closed'}).`);
+  addChat('system', `Game closed (${data.reason || 'closed'}).`);
   clearSession();
   setTimeout(() => {
     if (S.roomId) goToMainMenu();
@@ -337,7 +335,7 @@ function _renderSpectateList(active) {
   const body = document.getElementById('spec-rooms-body');
   if (!body) return;
   if (!active.length) {
-    body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem;padding:14px">No active rooms.</p>';
+    body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem;padding:14px">No games in progress.</p>';
     return;
   }
   body.innerHTML = active.map(r => {
