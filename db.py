@@ -171,9 +171,24 @@ def _calc_elo(ra, rb, outcome_a, k=32):
     return new_ra, new_rb
 
 
+def get_player_elo(name):
+    if not name:
+        return 1000
+    try:
+        conn = _db_conn()
+        cur = conn.cursor()
+        cur.execute(f"SELECT elo FROM players WHERE name = {_PH}", (name.lower(),))
+        row = cur.fetchone()
+        conn.close()
+        return int(row[0]) if row else 1000
+    except Exception as e:
+        print(f"get_player_elo error: {e}")
+        return 1000
+
+
 def _record_pvp_game(room):
     if len(room["players"]) < 2:
-        return
+        return None
     p0, p1 = room["players"][0], room["players"][1]
     game = room["game"]
     p0_key, p1_key = p0["name"].lower(), p1["name"].lower()
@@ -213,8 +228,15 @@ def _record_pvp_game(room):
         )
         conn.commit()
         conn.close()
+        return {
+            "names": [p0["name"], p1["name"]],
+            "before": [ra, rb],
+            "after": [new_ra, new_rb],
+            "change": [new_ra - ra, new_rb - rb],
+        }
     except Exception as e:
         print(f"PvP record error: {e}")
+        return None
 
 
 _init_db()

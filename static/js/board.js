@@ -231,6 +231,27 @@ function showGameOver(state) {
       if (gp >= 1) summary += ` | Series ${myW}–${oppW}`;
     }
     addChat('system', summary);
+    if (state.elo_result && Array.isArray(state.elo_result.before)
+        && Array.isArray(state.elo_result.after)
+        && Array.isArray(state.elo_result.change)) {
+      const fmtChange = c => c > 0 ? `+${c}` : (c < 0 ? `−${Math.abs(c)}` : '±0');
+      const before = state.elo_result.before;
+      const after  = state.elo_result.after;
+      const change = state.elo_result.change;
+      let eloMsg;
+      if (S.isSpectator) {
+        const p0 = names[0] || 'P1';
+        const p1 = names[1] || 'P2';
+        eloMsg = `ELO — ${p0}: ${before[0]} → ${after[0]} (${fmtChange(change[0])}) | `
+               + `${p1}: ${before[1]} → ${after[1]} (${fmtChange(change[1])})`;
+      } else {
+        const me = S.playerId, opp = 1 - S.playerId;
+        const oppName = S.oppName || 'Opponent';
+        eloMsg = `ELO — You: ${before[me]} → ${after[me]} (${fmtChange(change[me])}) | `
+               + `${oppName}: ${before[opp]} → ${after[opp]} (${fmtChange(change[opp])})`;
+      }
+      addChat('system', eloMsg);
+    }
     if (!S.isSpectator && S.mode === 'ai') autoSubmitAIScore(state);
   }
 }

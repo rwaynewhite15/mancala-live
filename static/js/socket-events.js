@@ -6,6 +6,8 @@ socket.on('joined', data => {
   S.roomId     = data.room_id;
   S.oppName    = data.opponent || (data.mode === 'ai' ? `AI (${data.difficulty})` : 'Opponent');
   S.isSpectator = false;
+  S.elos       = Array.isArray(data.elos) ? data.elos : null;
+  S.mySwing    = data.my_swing || null;
   if (data.token) S.token = data.token;
   S.oppConnected = true;
   hideDisconnectBanner();
@@ -30,8 +32,7 @@ socket.on('joined', data => {
 
   document.getElementById('my-name-text').textContent  = S.myName || 'You';
   document.getElementById('opp-name-text').textContent = S.oppName;
-  document.getElementById('gh-mode').textContent  =
-    data.mode === 'ai' ? `vs AI (${data.difficulty})` : `vs ${S.oppName}`;
+  applyEloLabels();
 
   // Chat is available in PvP for players. Spectators also chat (see spectator_joined).
   document.getElementById('chat-input-row').style.display = data.mode === 'ai' ? 'none' : 'flex';
@@ -45,6 +46,11 @@ socket.on('joined', data => {
       const whoFirst = fp === S.playerId ? 'You go first'
         : (data.mode === 'ai' ? 'AI goes first' : `${S.oppName} goes first`);
       addChat('system', `Game started. ${whoFirst}.`);
+      if (data.mode === 'pvp' && Array.isArray(data.elos)) {
+        const myElo  = data.elos[S.playerId];
+        const oppElo = data.elos[1 - S.playerId];
+        addChat('system', `ELO — You: ${myElo} | ${S.oppName}: ${oppElo}`);
+      }
     } else {
       addChat('system', `Reconnected.`);
     }
@@ -59,6 +65,8 @@ socket.on('spectator_joined', data => {
   S.roomId      = data.room_id;
   S.myName      = data.your_name;
   S.oppName     = data.p1_name || 'Waiting…';
+  S.elos        = Array.isArray(data.elos) ? data.elos : null;
+  S.mySwing     = null;
   if (data.token) S.token = data.token;
   saveSession();
 
@@ -76,12 +84,15 @@ socket.on('spectator_joined', data => {
 
   document.getElementById('my-record').textContent  = '';
   document.getElementById('opp-record').textContent = '';
-  document.getElementById('my-name-text').textContent  = data.p0_name || 'Player 1';
-  document.getElementById('opp-name-text').textContent = data.p1_name || 'Waiting…';
-  const p1Label = data.p1_name || 'opponent';
-  document.getElementById('gh-mode').textContent =
-    data.mode === 'ai' ? `Spectating: ${data.p0_name} vs AI (${data.difficulty})`
-                       : `Spectating: ${data.p0_name} vs ${p1Label}`;
+  const p0Label = data.p0_name || 'Player 1';
+  const p1Label = data.p1_name || 'Waiting…';
+  const myNameEl  = document.getElementById('my-name-text');
+  const oppNameEl = document.getElementById('opp-name-text');
+  myNameEl.textContent  = p0Label;
+  oppNameEl.textContent = p1Label;
+  myNameEl.dataset.baseName  = p0Label;
+  oppNameEl.dataset.baseName = p1Label;
+  applyEloLabels();
 
   // Spectators can chat in any mode (server tags messages).
   document.getElementById('chat-input-row').style.display = 'flex';
@@ -122,17 +133,36 @@ socket.on('new_game', data => {
   hideDisconnectBanner();
   hideForfeitBanner();
   document.getElementById('game-over-overlay').classList.remove('show');
+  if (Array.isArray(data.elos)) S.elos = data.elos;
+  if (data.my_swing) S.mySwing = data.my_swing;
+  lastGameOverState = null;
+  applyEloLabels();
   const fp = data.first_player;
   let whoFirst;
   if (S.isSpectator) {
-    const myName = document.getElementById('my-name-text').textContent;
-    const oppName = document.getElementById('opp-name-text').textContent;
+    const myEl = document.getElementById('my-name-text');
+    const oppEl = document.getElementById('opp-name-text');
+    const myName = myEl.dataset.baseName || myEl.textContent;
+    const oppName = oppEl.dataset.baseName || oppEl.textContent;
     whoFirst = fp === 0 ? `${myName} goes first` : `${oppName} goes first`;
   } else {
     whoFirst = fp === S.playerId ? 'You go first'
       : (S.mode === 'ai' ? 'AI goes first' : `${S.oppName || 'Opponent'} goes first`);
   }
   addChat('system', `Rematch! ${whoFirst}.`);
+  if (S.mode === 'pvp' && Array.isArray(data.elos)) {
+    if (S.isSpectator) {
+      const myEl = document.getElementById('my-name-text');
+      const oppEl = document.getElementById('opp-name-text');
+      const p0 = myEl.dataset.baseName || myEl.textContent;
+      const p1 = oppEl.dataset.baseName || oppEl.textContent;
+      addChat('system', `ELO — ${p0}: ${data.elos[0]} | ${p1}: ${data.elos[1]}`);
+    } else {
+      const myElo  = data.elos[S.playerId];
+      const oppElo = data.elos[1 - S.playerId];
+      addChat('system', `ELO — You: ${myElo} | ${S.oppName}: ${oppElo}`);
+    }
+  }
   loadGameLeaderboard();
 });
 
@@ -151,20 +181,27 @@ socket.on('state', state => {
     if (S.isSpectator) {
       const p0Name = state.player_names[0] || 'Player 1';
       const p1Name = state.player_names[1] || 'Player 2';
-      document.getElementById('my-name-text').textContent  = p0Name;
-      document.getElementById('opp-name-text').textContent = p1Name;
+      const myEl = document.getElementById('my-name-text');
+      const oppEl = document.getElementById('opp-name-text');
+      myEl.dataset.baseName  = p0Name;
+      oppEl.dataset.baseName = p1Name;
+      myEl.textContent  = p0Name;
+      oppEl.textContent = p1Name;
       S.oppName = p1Name;
-      // Update the header label in case we joined while waiting.
-      document.getElementById('gh-mode').textContent =
-        S.mode === 'ai' ? `Spectating: ${p0Name} vs AI (${S.difficulty})`
-                        : `Spectating: ${p0Name} vs ${p1Name}`;
+      applyEloLabels();
     } else if (S.playerId !== null) {
       const oppName = state.player_names[1 - S.playerId];
       if (oppName) {
         S.oppName = oppName;
         document.getElementById('opp-name-text').textContent = oppName;
+        applyEloLabels();
       }
     }
+  }
+
+  if (state.elo_result && Array.isArray(state.elo_result.after)) {
+    S.elos = state.elo_result.after.slice();
+    applyEloLabels();
   }
 
   if (state.game_over) {

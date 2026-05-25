@@ -12,6 +12,8 @@ const S = {
   oppConnected: true,
   oppDisconnectedAt: null,
   skipLeaderboard: false,
+  elos: null,       // [p0_elo, p1_elo] in pvp games
+  mySwing: null,    // { win, loss } for the local player
 };
 let prevBoard = null;
 let isAnimating = false;
