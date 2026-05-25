@@ -156,5 +156,34 @@
   </tbody>
 </table>
 
+<h2>PvAI Leaderboard ({{ ai_entries|length }})</h2>
+<p style="color:var(--muted);font-size:.8rem;margin-bottom:10px">Deleting an entry only removes the AI record — PvP rankings are unaffected.</p>
+<table>
+  <thead>
+    <tr><th>Player</th><th>Difficulty</th><th>W</th><th>L</th><th>T</th><th class="hide-sm">Last played</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for e in ai_entries %}
+    {% set eid = e[0] %}
+    <tr>
+      <td>{{ e[1] }}</td>
+      <td>{{ e[2] }}</td>
+      <td class="win">{{ e[3] }}</td>
+      <td class="loss">{{ e[4] }}</td>
+      <td class="tie">{{ e[5] }}</td>
+      <td class="hide-sm" style="color:#666;font-size:.75rem">{{ e[6]|string|truncate(16, killwords=True, end='') }}</td>
+      <td>
+        <form method="POST" action="/admin/delete_ai_entry/{{ eid }}"
+              onsubmit="return confirm('Delete PvAI record for {{ e[1] }} ({{ e[2] }})?')">
+          <button class="btn btn-danger" type="submit">Del</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" style="text-align:center;color:#666;padding:20px">No AI records yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
 </body>
 </html>

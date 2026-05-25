@@ -55,8 +55,11 @@ function getPasswordOrError() {
 
 function createRoom() {
   clearError();
-  S.myName = getName();
+  const rawName = document.getElementById('name-input').value.trim();
   S.mode = S.selectedMode;
+  if (S.mode === 'pvp' && !rawName) { showError('Enter a name to play PvP.'); return; }
+  S.myName = rawName || 'Player';
+  S.skipLeaderboard = (S.mode === 'ai' && !rawName);
   S.difficulty = document.getElementById('difficulty-select').value;
   const firstPlayer = document.getElementById('first-move-select').value;
   const password = getPasswordOrError();
@@ -67,7 +70,9 @@ function joinFromList(roomCode) {
   clearError();
   const code = String(roomCode || '').trim().toUpperCase();
   if (code.length !== 6) return;
-  S.myName = getName();
+  const rawName = document.getElementById('name-input').value.trim();
+  if (!rawName) { showError('Enter a name to join a game.'); return; }
+  S.myName = rawName;
   const password = getPasswordOrError();
   if (password === null) return;
   socket.emit('join_room_request', { name: S.myName, room_id: code, password });
