@@ -52,21 +52,39 @@
 <h2>PvP Rankings ({{ players|length }})</h2>
 <table>
   <thead>
-    <tr><th>#</th><th>Player</th><th>ELO</th><th>W</th><th>L</th><th>T</th><th class="hide-sm">GP</th></tr>
+    <tr><th>#</th><th>Player</th><th>ELO</th><th>W</th><th>L</th><th>T</th><th class="hide-sm">GP</th><th></th></tr>
   </thead>
   <tbody>
     {% for p in players %}
+    {% set pkey = p[0] %}
+    {% set pname = p[1] %}
     <tr>
       <td>{{ loop.index }}</td>
-      <td>{{ p[0] }}</td>
-      <td><strong>{{ p[1] }}</strong></td>
-      <td class="win">{{ p[2] }}</td>
-      <td class="loss">{{ p[3] }}</td>
-      <td class="tie">{{ p[4] }}</td>
-      <td class="hide-sm">{{ p[5] }}</td>
+      <td>
+        <span id="name-{{ loop.index }}">{{ pname }}</span>
+        <div id="rename-form-{{ loop.index }}" style="display:none;margin-top:6px">
+          <form method="POST" action="/admin/rename_player" style="display:flex;gap:6px;flex-wrap:wrap">
+            <input type="hidden" name="old_key" value="{{ pkey }}">
+            <input type="text" name="new_display" value="{{ pname }}" maxlength="20"
+                   style="flex:1;min-width:100px;padding:6px 8px;border-radius:6px;border:1px solid #444;background:#0f3460;color:#eee;font-size:.85rem">
+            <button type="submit" class="btn btn-info" style="padding:6px 12px;font-size:.8rem">Save</button>
+            <button type="button" class="btn btn-secondary" style="padding:6px 12px;font-size:.8rem"
+                    onclick="document.getElementById('rename-form-{{ loop.index }}').style.display='none'">Cancel</button>
+          </form>
+        </div>
+      </td>
+      <td><strong>{{ p[2] }}</strong></td>
+      <td class="win">{{ p[3] }}</td>
+      <td class="loss">{{ p[4] }}</td>
+      <td class="tie">{{ p[5] }}</td>
+      <td class="hide-sm">{{ p[6] }}</td>
+      <td>
+        <button class="btn btn-info" style="padding:4px 10px;font-size:.78rem"
+                onclick="document.getElementById('rename-form-{{ loop.index }}').style.display='block'">Rename</button>
+      </td>
     </tr>
     {% else %}
-    <tr><td colspan="7" style="text-align:center;color:#666;padding:20px">No players yet.</td></tr>
+    <tr><td colspan="8" style="text-align:center;color:#666;padding:20px">No players yet.</td></tr>
     {% endfor %}
   </tbody>
 </table>

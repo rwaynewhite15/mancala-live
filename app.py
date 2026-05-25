@@ -505,7 +505,7 @@ def admin_panel():
         )
         games = cur.fetchall()
         cur.execute(
-            "SELECT display_name, elo, wins, losses, ties, games_played "
+            "SELECT name, display_name, elo, wins, losses, ties, games_played "
             "FROM players ORDER BY elo DESC LIMIT 30"
         )
         players = cur.fetchall()
@@ -550,6 +550,37 @@ def admin_recalc():
 @app.route("/admin/logout", methods=["POST"])
 def admin_logout():
     session.pop("admin_authed", None)
+    return redirect(url_for("admin_panel"))
+
+
+@app.route("/admin/rename_player", methods=["POST"])
+def admin_rename_player():
+    if not ADMIN_PASSWORD or not _admin_authed():
+        return redirect(url_for("admin_panel"))
+    old_key     = request.form.get("old_key", "").strip().lower()
+    new_display = request.form.get("new_display", "").strip()[:20]
+    if not old_key or not new_display:
+        return redirect(url_for("admin_panel"))
+    new_key = new_display.lower()
+    try:
+        conn = _db_conn()
+        cur  = conn.cursor()
+        cur.execute(f"UPDATE players SET name={_PH}, display_name={_PH} WHERE name={_PH}",
+                    (new_key, new_display, old_key))
+        cur.execute(f"UPDATE pvp_games SET p1_name={_PH}, p1_display={_PH} WHERE p1_name={_PH}",
+                    (new_key, new_display, old_key))
+        cur.execute(f"UPDATE pvp_games SET p2_name={_PH}, p2_display={_PH} WHERE p2_name={_PH}",
+                    (new_key, new_display, old_key))
+        cur.execute(f"UPDATE pvp_games SET winner_name={_PH} WHERE winner_name={_PH}",
+                    (new_key, old_key))
+        cur.execute(
+            f"UPDATE leaderboard SET name_lower={_PH}, display_name={_PH} WHERE name_lower={_PH}",
+            (new_key, new_display, old_key)
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        return f"DB error: {e}", 500
     return redirect(url_for("admin_panel"))
 
 

@@ -107,8 +107,10 @@ socket.on('spectator_joined', data => {
 
 socket.on('waiting', data => {
   S.roomId = data.room_id;
-  document.getElementById('waiting-code').textContent = S.roomId;
-  showScreen('waiting');
+  renderPreGameBoard();
+  document.getElementById('status-bar').textContent = 'Waiting for opponent to join…';
+  showScreen('game');
+  loadGameLeaderboard();
 });
 
 function onGameScreen() {
