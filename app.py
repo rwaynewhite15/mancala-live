@@ -798,6 +798,14 @@ def handle_spectate(data):
     sid = request.sid
     room_id = str(data.get("room_id", "")).strip().upper()
     raw_name = str(data.get("name", "")).strip()[:20]
+    password = str(data.get("password", "")).strip()
+
+    # Only password-check if the user provided a name (auto-names don't need it)
+    if raw_name:
+        err = _handle_player_auth(raw_name, password)
+        if err:
+            emit("error", {"message": err})
+            return
 
     room = rooms.get(room_id)
     if not room:

@@ -67,7 +67,8 @@ function spectateRoom(roomCode) {
   if (code.length !== 6) return;
   // Spectator name is taken from the name input; server fills in "Spectator N" if blank.
   S.myName = getSpectatorName();
-  socket.emit('spectate_room', { name: S.myName || '', room_id: code });
+  const password = document.getElementById('name-password').value;
+  socket.emit('spectate_room', { name: S.myName || '', room_id: code, password });
 }
 function copyCode() {
   navigator.clipboard.writeText(S.roomId).then(() => {
