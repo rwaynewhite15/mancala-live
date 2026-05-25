@@ -59,12 +59,17 @@ function joinRoom() {
   S.myName = getName();
   socket.emit('join_room_request', { name: S.myName, room_id: code });
 }
-function spectateRoom(roomCodeArg) {
+function joinFromList(roomCode) {
   clearError();
-  const code = (roomCodeArg
-    ? String(roomCodeArg)
-    : document.getElementById('spec-code-input').value).trim().toUpperCase();
-  if (code.length !== 6) { showError('Enter the full 6-character room code.'); return; }
+  const code = String(roomCode || '').trim().toUpperCase();
+  if (code.length !== 6) return;
+  S.myName = getName();
+  socket.emit('join_room_request', { name: S.myName, room_id: code });
+}
+function spectateRoom(roomCode) {
+  clearError();
+  const code = String(roomCode || '').trim().toUpperCase();
+  if (code.length !== 6) return;
   // Spectator name is taken from the name input; server fills in "Spectator N" if blank.
   S.myName = getSpectatorName();
   socket.emit('spectate_room', { name: S.myName || '', room_id: code });
