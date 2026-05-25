@@ -412,6 +412,21 @@ def pvp_player(name):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/players/names")
+def player_names():
+    try:
+        conn = _db_conn()
+        cur  = conn.cursor()
+        cur.execute("SELECT DISTINCT display_name FROM players")
+        pvp = [r[0] for r in cur.fetchall()]
+        cur.execute("SELECT DISTINCT display_name FROM leaderboard")
+        ai  = [r[0] for r in cur.fetchall()]
+        conn.close()
+        return jsonify(sorted(set(pvp + ai), key=str.lower))
+    except Exception:
+        return jsonify([])
+
+
 # ── Admin panel ───────────────────────────────────────────────────────────────
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")

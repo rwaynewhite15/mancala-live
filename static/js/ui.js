@@ -41,8 +41,16 @@ function showError(msg) {
 function clearError() { document.getElementById('error-banner').style.display = 'none'; }
 
 // ── Lobby actions ──────────────────────────────────────────────────────────
-function getName() { return document.getElementById('name-input').value.trim() || 'Player'; }
-function getSpectatorName() { return document.getElementById('name-input').value.trim(); }
+function getName() {
+  const sel = document.getElementById('name-select');
+  if (sel && sel.value !== '__new__') return sel.value;
+  return document.getElementById('name-input').value.trim() || 'Player';
+}
+function getSpectatorName() {
+  const sel = document.getElementById('name-select');
+  if (sel && sel.value !== '__new__') return sel.value;
+  return document.getElementById('name-input').value.trim();
+}
 
 function createRoom() {
   clearError();

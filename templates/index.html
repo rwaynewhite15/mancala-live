@@ -25,7 +25,10 @@
     <div class="card">
       <h2>Welcome</h2>
       <div id="error-banner"></div>
-      <input type="text" id="name-input" placeholder="Your name" maxlength="20" autocomplete="off">
+      <select id="name-select">
+        <option value="__new__">New Player…</option>
+      </select>
+      <input type="text" id="name-input" placeholder="Enter your name" maxlength="20" autocomplete="off" class="hidden">
 
       <h3>How to play?</h3>
       <div class="toggle">

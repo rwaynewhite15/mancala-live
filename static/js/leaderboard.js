@@ -253,3 +253,18 @@ async function loadGameLeaderboard() {
     body.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:.9rem">Could not load.</p>';
   }
 }
+
+async function loadPlayerNames() {
+  try {
+    const res   = await fetch('/players/names');
+    const names = await res.json();
+    const sel   = document.getElementById('name-select');
+    if (!sel || !Array.isArray(names)) return;
+    names.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      sel.appendChild(opt);
+    });
+  } catch(e) {}
+}
