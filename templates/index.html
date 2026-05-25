@@ -37,7 +37,7 @@
 
       <h3>How to play?</h3>
       <div class="toggle">
-        <button class="toggle-btn active" id="tab-create" onclick="showTab('create')">Create Room</button>
+        <button class="toggle-btn active" id="tab-create" onclick="showTab('create')">Create Game</button>
         <button class="toggle-btn" id="tab-join"   onclick="showTab('join')">Join Game</button>
         <button class="toggle-btn" id="tab-spectate" onclick="showTab('spectate')">Spectate</button>
       </div>
@@ -73,7 +73,7 @@
       </div>
 
       <div id="panel-spectate" class="hidden">
-        <h3>Active Matches</h3>
+        <h3>Active Games</h3>
         <div id="spec-rooms-body" class="rooms-list">
           <p style="color:var(--muted);text-align:center;font-size:.9rem;padding:14px">Loading...</p>
         </div>
@@ -122,7 +122,7 @@
   <!-- ── WAITING ── -->
   <div id="screen-waiting" class="screen">
     <div class="card" style="text-align:center">
-      <h2>Room Created!</h2>
+      <h2>Game Created!</h2>
       <p style="color:var(--muted);margin-bottom:4px">Share this code with your opponent:</p>
       <div class="room-code" id="waiting-code">------</div>
       <button class="btn btn-secondary" style="margin-bottom:14px" onclick="copyCode()">Copy Code</button>
@@ -135,7 +135,6 @@
   <div id="screen-game" class="screen">
     <div id="game-header">
       <span id="gh-mode"></span>
-      <span id="gh-room"></span>
       <span id="spectator-badge" class="hidden"></span>
       <button class="btn btn-secondary" style="font-size:.75rem;padding:4px 12px" onclick="goToMainMenu()">Main Menu</button>
     </div>
