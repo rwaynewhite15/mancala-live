@@ -596,11 +596,16 @@ def admin_panel():
             "FROM players ORDER BY elo DESC LIMIT 30"
         )
         players = cur.fetchall()
+        cur.execute(
+            "SELECT id, display_name, difficulty, wins, losses, ties, submitted_at "
+            "FROM leaderboard ORDER BY display_name ASC, difficulty ASC"
+        )
+        ai_entries = cur.fetchall()
         conn.close()
     except Exception as e:
         return f"DB error: {e}", 500
 
-    return render_template("admin.html", games=games, players=players)
+    return render_template("admin.html", games=games, players=players, ai_entries=ai_entries)
 
 
 @app.route("/admin/delete_game/<int:game_id>", methods=["POST"])
@@ -612,6 +617,21 @@ def admin_delete_game(game_id):
         cur = conn.cursor()
         cur.execute(f"DELETE FROM pvp_games WHERE id={_PH}", (game_id,))
         _recalc_elo_from_games(cur)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        return f"DB error: {e}", 500
+    return redirect(url_for("admin_panel"))
+
+
+@app.route("/admin/delete_ai_entry/<int:entry_id>", methods=["POST"])
+def admin_delete_ai_entry(entry_id):
+    if not ADMIN_PASSWORD or not _admin_authed():
+        return redirect(url_for("admin_panel"))
+    try:
+        conn = _db_conn()
+        cur  = conn.cursor()
+        cur.execute(f"DELETE FROM leaderboard WHERE id={_PH}", (entry_id,))
         conn.commit()
         conn.close()
     except Exception as e:

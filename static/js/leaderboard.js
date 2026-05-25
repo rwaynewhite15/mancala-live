@@ -43,6 +43,7 @@ async function loadLeaderboard() {
 }
 
 async function autoSubmitAIScore(state) {
+  if (S.skipLeaderboard) { loadGameLeaderboard(); return; }
   const w      = state.winner;
   const wins   = w === S.playerId ? 1 : 0;
   const losses = (w !== null && w !== S.playerId) ? 1 : 0;

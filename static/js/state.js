@@ -11,6 +11,7 @@ const S = {
   spectatorCount: 0,
   oppConnected: true,
   oppDisconnectedAt: null,
+  skipLeaderboard: false,
 };
 let prevBoard = null;
 let isAnimating = false;
