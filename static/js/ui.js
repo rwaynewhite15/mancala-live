@@ -133,6 +133,8 @@ function showDisconnectBanner(name, graceSeconds) {
   const banner = document.getElementById('disconnect-banner');
   if (!banner) return;
   const nameEl = document.getElementById('dc-name');
+  const statusEl = document.getElementById('dc-status');
+  if (statusEl) statusEl.innerHTML = 'disconnected\n        — game terminating in <span id="dc-countdown">--</span>';
   const countdownEl = document.getElementById('dc-countdown');
   if (nameEl) nameEl.textContent = name || 'Opponent';
   banner.classList.remove('hidden');
@@ -149,7 +151,7 @@ function showDisconnectBanner(name, graceSeconds) {
       if (secs <= 0) {
         clearInterval(disconnectCountdownTimer);
         disconnectCountdownTimer = null;
-        countdownEl.textContent = 'Hasn’t returned';
+        if (statusEl) statusEl.textContent = 'disconnected — game terminated';
       } else {
         countdownEl.textContent = formatCountdown(secs);
       }
