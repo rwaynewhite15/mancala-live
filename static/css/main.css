@@ -221,3 +221,83 @@ select:focus { border-color: var(--gold); }
 #game-over-scores { color: var(--muted); font-size: 1.05rem; }
 
 .hidden { display: none !important; }
+
+/* ── Disconnect / forfeit banners ─────────────────────────────────────── */
+#disconnect-banner {
+  background: #3a2510;
+  border: 1.5px solid var(--rust);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  color: #ffd6a8;
+  font-size: .92rem;
+  text-align: center;
+}
+#disconnect-banner #dc-countdown {
+  color: var(--gold);
+  font-weight: 800;
+  font-family: 'Courier New', monospace;
+}
+#forfeit-banner {
+  background: #2a1a3a;
+  border: 1.5px solid var(--teal);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  color: var(--cream);
+  font-size: .9rem;
+  text-align: center;
+}
+
+/* ── Spectator badge / locked pits / spec chat ────────────────────────── */
+#spectator-badge {
+  font-size: .78rem;
+  color: var(--gold);
+  padding: 3px 8px;
+  background: rgba(254,205,26,0.1);
+  border: 1px solid rgba(254,205,26,0.3);
+  border-radius: 6px;
+}
+.pit.spectator-locked { cursor: default !important; }
+.pit.spectator-locked:hover { transform: none !important; box-shadow: inset 0 3px 8px rgba(0,0,0,0.45), 0 2px 4px rgba(0,0,0,0.3) !important; }
+.chat-msg.spec { color: #a9d4ff; }
+.chat-msg .chat-tag {
+  display: inline-block;
+  background: rgba(127,179,234,0.18);
+  color: #a9d4ff;
+  font-size: .7rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-right: 4px;
+  letter-spacing: .5px;
+}
+
+/* ── Rooms list (Spectate tab) ────────────────────────────────────────── */
+.rooms-list {
+  background: #052828;
+  border: 1px solid #0e4040;
+  border-radius: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.room-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid #0e4040;
+  gap: 10px;
+}
+.room-row:last-child { border-bottom: none; }
+.room-row-main { flex: 1; min-width: 0; }
+.room-row-players { font-weight: 700; font-size: .95rem; color: var(--cream); }
+.room-row-meta { font-size: .76rem; color: var(--muted); margin-top: 2px; }
+.room-row-btn {
+  font-size: .82rem;
+  padding: 6px 14px;
+}
+.room-row-btn[disabled] {
+  opacity: .4;
+  cursor: not-allowed;
+}

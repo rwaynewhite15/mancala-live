@@ -79,8 +79,9 @@ function applyBoard(board, validSet, lastPit) {
 
 // ── Full render (board + status) ───────────────────────────────────────────
 function renderState(state) {
-  const myTurn   = state.current_player === S.playerId;
-  const validSet = myTurn && !state.game_over ? new Set(state.valid_moves) : null;
+  const myTurn   = !S.isSpectator && state.current_player === S.playerId;
+  const validSet = (!S.isSpectator && myTurn && !state.game_over)
+                     ? new Set(state.valid_moves) : null;
   const lastPit  = state.last_move ? state.last_move.pit : null;
 
   applyBoard(state.board, validSet, lastPit);
@@ -88,20 +89,38 @@ function renderState(state) {
   const scores = state.scores || {0: 0, 1: 0};
   const gp = state.games_played || 0;
   if (gp >= 1) {
-    const myW  = scores[S.playerId]     || 0;
-    const oppW = scores[1 - S.playerId] || 0;
-    document.getElementById('my-record').textContent  = `${myW}W–${oppW}L`;
-    document.getElementById('opp-record').textContent = `${oppW}W–${myW}L`;
+    if (S.isSpectator) {
+      // Bottom = P0, Top = P1 in spectator view.
+      const p0W = scores[0] || 0;
+      const p1W = scores[1] || 0;
+      document.getElementById('my-record').textContent  = `${p0W}W–${p1W}L`;
+      document.getElementById('opp-record').textContent = `${p1W}W–${p0W}L`;
+    } else {
+      const myW  = scores[S.playerId]     || 0;
+      const oppW = scores[1 - S.playerId] || 0;
+      document.getElementById('my-record').textContent  = `${myW}W–${oppW}L`;
+      document.getElementById('opp-record').textContent = `${oppW}W–${myW}L`;
+    }
   }
 
-  document.getElementById('my-bar').classList.toggle('active-player',  myTurn && !state.game_over);
-  document.getElementById('opp-bar').classList.toggle('active-player', !myTurn && !state.game_over);
+  const bottomActive = state.current_player === (S.isSpectator ? 0 : S.playerId);
+  document.getElementById('my-bar').classList.toggle('active-player',  bottomActive && !state.game_over);
+  document.getElementById('opp-bar').classList.toggle('active-player', !bottomActive && !state.game_over);
+
+  // Update spectator count badge if present
+  updateSpectatorBadge(state.spectator_count);
 
   const statusEl = document.getElementById('status-bar');
   if (state.game_over) {
     statusEl.textContent = 'Game over';
     statusEl.className = '';
     showGameOver(state);
+  } else if (S.isSpectator) {
+    const names = state.player_names || [S.oppName || 'P1', 'P2'];
+    const turnName = names[state.current_player] || `Player ${state.current_player + 1}`;
+    statusEl.textContent = `${turnName}’s turn`;
+    statusEl.className = '';
+    document.getElementById('game-over-overlay').classList.remove('show');
   } else {
     if (myTurn) {
       statusEl.textContent = 'Your turn';
@@ -115,47 +134,93 @@ function renderState(state) {
   }
 }
 
+function updateSpectatorBadge(count) {
+  if (typeof count !== 'number') return;
+  S.spectatorCount = count;
+  const el = document.getElementById('spectator-badge');
+  if (!el) return;
+  if (count > 0) {
+    el.classList.remove('hidden');
+    el.textContent = count === 1 ? '👁 1 spectator' : `👁 ${count} spectators`;
+  } else {
+    el.classList.add('hidden');
+  }
+}
+
 function showGameOver(state) {
   lastGameOverState = state;
 
   const myS  = state.board[myStoreIdx()];
   const oppS = state.board[oppStoreIdx()];
   const w    = state.winner;
+  const forfeit = state.forfeit;
+
   let title, color;
-  if (w === null)           { title = "It's a Tie!"; color = '#f0c040'; }
-  else if (w === S.playerId){ title = 'You Win!';    color = '#50d080'; }
-  else                      { title = 'You Lose';    color = '#e05030'; }
-  const opp = S.mode === 'ai' ? 'AI' : (S.oppName || 'Opponent');
+  const names = state.player_names || [];
+  if (S.isSpectator) {
+    if (w === null)        { title = "Tie!";   color = '#f0c040'; }
+    else                   {
+      title = `${names[w] || ('Player ' + (w+1))} Wins!`;
+      color = '#50d080';
+    }
+  } else {
+    if (w === null)           { title = "It's a Tie!"; color = '#f0c040'; }
+    else if (w === S.playerId){ title = 'You Win!';    color = '#50d080'; }
+    else                      { title = 'You Lose';    color = '#e05030'; }
+  }
+  if (forfeit && !S.isSpectator) {
+    title += w === S.playerId ? ' (Forfeit)' : ' (Forfeit)';
+  } else if (forfeit && S.isSpectator) {
+    title += ' (Forfeit)';
+  }
+  const oppLabel = S.isSpectator
+    ? (names[1] || 'P2')
+    : (S.mode === 'ai' ? 'AI' : (S.oppName || 'Opponent'));
+  const meLabel = S.isSpectator ? (names[0] || 'P1') : 'You';
   document.getElementById('game-over-title').textContent = title;
   document.getElementById('game-over-title').style.color = color;
-  document.getElementById('game-over-scores').textContent = `You: ${myS}  |  ${opp}: ${oppS}`;
+  document.getElementById('game-over-scores').textContent = `${meLabel}: ${myS}  |  ${oppLabel}: ${oppS}`;
 
   const scores = state.scores || {0: 0, 1: 0};
   const gp = state.games_played || 0;
   const recEl = document.getElementById('game-over-record');
   if (gp >= 1) {
-    const myW  = scores[S.playerId]  || 0;
-    const oppW = scores[1 - S.playerId] || 0;
-    recEl.textContent = `Series: ${myW} – ${oppW}`;
+    if (S.isSpectator) {
+      recEl.textContent = `Series: ${scores[0]||0} – ${scores[1]||0}`;
+    } else {
+      const myW  = scores[S.playerId]  || 0;
+      const oppW = scores[1 - S.playerId] || 0;
+      recEl.textContent = `Series: ${myW} – ${oppW}`;
+    }
   } else {
     recEl.textContent = '';
   }
+
+  // Hide rematch button for spectators
+  const rematchBtn = document.getElementById('rematch-btn');
+  if (rematchBtn) rematchBtn.style.display = S.isSpectator ? 'none' : '';
 
   document.getElementById('game-over-overlay').classList.add('show');
 
   // Once per completed game: post chat summary and auto-submit AI score
   if (gp !== lastGameSummarized) {
     lastGameSummarized = gp;
-    const myS   = state.board[myStoreIdx()];
-    const oppS  = state.board[oppStoreIdx()];
-    const opp   = S.mode === 'ai' ? 'AI' : (S.oppName || 'Opponent');
-    const myW   = scores[S.playerId]      || 0;
-    const oppW  = scores[1 - S.playerId]  || 0;
-    let result  = w === null ? 'Tie' : (w === S.playerId ? 'You win!' : 'You lose');
-    let summary = `Game ${gp}: You ${myS} – ${opp} ${oppS} | ${result}`;
-    if (gp >= 1) summary += ` | Series ${myW}–${oppW}`;
+    let summary;
+    if (S.isSpectator) {
+      const wText = w === null ? 'Tie' : `${names[w] || ('Player ' + (w+1))} wins`;
+      summary = `Game ${gp}: ${names[0]||'P1'} ${myS} – ${names[1]||'P2'} ${oppS} | ${wText}`;
+      if (gp >= 1) summary += ` | Series ${scores[0]||0}–${scores[1]||0}`;
+    } else {
+      const opp   = S.mode === 'ai' ? 'AI' : (S.oppName || 'Opponent');
+      const myW   = scores[S.playerId]      || 0;
+      const oppW  = scores[1 - S.playerId]  || 0;
+      let result  = w === null ? 'Tie' : (w === S.playerId ? 'You win!' : 'You lose');
+      if (forfeit) result += ' (forfeit)';
+      summary = `Game ${gp}: You ${myS} – ${opp} ${oppS} | ${result}`;
+      if (gp >= 1) summary += ` | Series ${myW}–${oppW}`;
+    }
     addChat('system', summary);
-    if (S.mode === 'ai') autoSubmitAIScore(state);
+    if (!S.isSpectator && S.mode === 'ai') autoSubmitAIScore(state);
   }
 }
 
@@ -236,5 +301,6 @@ async function animateMove(boardBefore, lastMove, finalState) {
 // ── Pit click ──────────────────────────────────────────────────────────────
 function onPitClick(label) {
   if (isAnimating) return;
+  if (S.isSpectator) return; // spectators can't move
   socket.emit('move', { pit: labelToBoardIdx(label) });
 }
