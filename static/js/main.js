@@ -3,35 +3,44 @@
   const input      = document.getElementById('name-input');
   const box        = document.getElementById('name-suggestions');
   const pwField    = document.getElementById('name-password');
+  const pwConfirm  = document.getElementById('name-password-confirm');
   const pwHint     = document.getElementById('password-hint');
   const protectBtn = document.getElementById('protect-name-btn');
   let activeIdx = -1;
 
-  // Show password field because name is protected
+  // Verify mode: existing protected name — one field, no confirm
   function requirePassword() {
     pwField.classList.remove('hidden');
+    pwConfirm.classList.add('hidden');
+    pwConfirm.value = '';
     pwHint.textContent = '🔒 This name is password-protected';
     pwHint.style.color = 'var(--gold)';
     pwHint.classList.remove('hidden');
     protectBtn.classList.add('hidden');
   }
 
-  // Show optional protect button for unprotected / new names
+  // Set mode: new/unprotected name — two fields
+  function showSetPassword() {
+    protectBtn.classList.add('hidden');
+    pwField.classList.remove('hidden');
+    pwConfirm.classList.remove('hidden');
+    pwHint.textContent = 'Enter a password to protect this name (optional)';
+    pwHint.style.color = 'var(--muted)';
+    pwHint.classList.remove('hidden');
+    pwField.focus();
+  }
+
+  // Reset: hide everything password-related
   function offerProtect(nameEntered) {
     pwField.classList.add('hidden');
     pwField.value = '';
+    pwConfirm.classList.add('hidden');
+    pwConfirm.value = '';
     pwHint.classList.add('hidden');
     protectBtn.classList.toggle('hidden', !nameEntered);
   }
 
-  protectBtn.addEventListener('click', () => {
-    protectBtn.classList.add('hidden');
-    pwField.classList.remove('hidden');
-    pwHint.textContent = 'Create a password to protect this name (optional)';
-    pwHint.style.color = 'var(--muted)';
-    pwHint.classList.remove('hidden');
-    pwField.focus();
-  });
+  protectBtn.addEventListener('click', showSetPassword);
 
   let nameCheckTimer = null;
   async function checkNameStatus(name) {
