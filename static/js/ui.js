@@ -128,11 +128,57 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ── ELO labels ─────────────────────────────────────────────────────────────
+function applyEloLabels() {
+  const myNameEl  = document.getElementById('my-name-text');
+  const oppNameEl = document.getElementById('opp-name-text');
+  const modeEl    = document.getElementById('gh-mode');
+  if (!myNameEl || !oppNameEl || !modeEl) return;
+
+  const baseMyName  = S.isSpectator ? (myNameEl.dataset.baseName || myNameEl.textContent)
+                                    : (S.myName || 'You');
+  const baseOppName = S.isSpectator ? (oppNameEl.dataset.baseName || oppNameEl.textContent)
+                                    : (S.oppName || 'Opponent');
+
+  const elos = Array.isArray(S.elos) ? S.elos : null;
+  let myElo, oppElo;
+  if (elos) {
+    if (S.isSpectator) { myElo = elos[0]; oppElo = elos[1]; }
+    else if (S.playerId === 0 || S.playerId === 1) {
+      myElo  = elos[S.playerId];
+      oppElo = elos[1 - S.playerId];
+    }
+  }
+
+  myNameEl.textContent  = myElo  != null ? `${baseMyName} (${myElo})`  : baseMyName;
+  oppNameEl.textContent = oppElo != null ? `${baseOppName} (${oppElo})` : baseOppName;
+
+  // Header label: keep prefix + swing suffix in pvp.
+  let headerText;
+  if (S.isSpectator) {
+    headerText = S.mode === 'ai'
+      ? `Spectating: ${baseMyName} vs AI (${S.difficulty})`
+      : `Spectating: ${baseMyName} vs ${baseOppName}`;
+  } else {
+    headerText = S.mode === 'ai'
+      ? `vs AI (${S.difficulty})`
+      : `vs ${baseOppName}`;
+  }
+  if (S.mode === 'pvp' && S.mySwing && typeof S.mySwing.win === 'number') {
+    const w = S.mySwing.win;
+    const l = S.mySwing.loss;
+    headerText += `  (worth +${w} / −${l})`;
+  }
+  modeEl.textContent = headerText;
+}
+
 // ── Disconnect banner ──────────────────────────────────────────────────────
 function showDisconnectBanner(name, graceSeconds) {
   const banner = document.getElementById('disconnect-banner');
   if (!banner) return;
   const nameEl = document.getElementById('dc-name');
+  const statusEl = document.getElementById('dc-status');
+  if (statusEl) statusEl.innerHTML = 'disconnected\n        — game terminating in <span id="dc-countdown">--</span>';
   const countdownEl = document.getElementById('dc-countdown');
   if (nameEl) nameEl.textContent = name || 'Opponent';
   banner.classList.remove('hidden');
@@ -149,7 +195,7 @@ function showDisconnectBanner(name, graceSeconds) {
       if (secs <= 0) {
         clearInterval(disconnectCountdownTimer);
         disconnectCountdownTimer = null;
-        countdownEl.textContent = 'Hasn’t returned';
+        if (statusEl) statusEl.textContent = 'disconnected — game terminated';
       } else {
         countdownEl.textContent = formatCountdown(secs);
       }

@@ -16,7 +16,7 @@ from game import (INITIAL_STONES, NUM_PITS, AI_STARTUP_DELAY, AI_MOVE_DELAY,
                   P1_PITS, P1_STORE, P2_PITS, P2_STORE,
                   PLAYER_PITS, PLAYER_STORE, OPPOSITE, MancalaGame)
 from ai import get_ai_move
-from db import _db_conn, _PH, _USE_PG, _record_pvp_game, _calc_elo
+from db import _db_conn, _PH, _USE_PG, _record_pvp_game, _calc_elo, get_player_elo
 
 # ── Flask / SocketIO setup ────────────────────────────────────────────────────
 
@@ -123,7 +123,26 @@ def _record_score(room):
     if winner is not None:
         room["scores"][winner] += 1
     if room["mode"] == "pvp":
-        _record_pvp_game(room)
+        room["last_elo_result"] = _record_pvp_game(room)
+
+
+def _pvp_elo_payload(room):
+    if len(room["players"]) < 2:
+        return None
+    ra = get_player_elo(room["players"][0]["name"])
+    rb = get_player_elo(room["players"][1]["name"])
+    K = 32
+    ea = 1 / (1 + 10 ** ((rb - ra) / 400))
+    # If p0 wins: p0 gains win_a, p1 loses win_a. If p0 loses: p0 loses loss_a, p1 gains loss_a.
+    win_a = round(K * (1 - ea))
+    loss_a = round(K * ea)
+    return {
+        "elos": [ra, rb],
+        "swing": [
+            {"win": win_a, "loss": loss_a},
+            {"win": loss_a, "loss": win_a},
+        ],
+    }
 
 
 def _broadcast_state(room_id):
@@ -143,6 +162,7 @@ def _broadcast_state(room_id):
         "spectator_count": len(room["spectators"]),
         "player_names": [p["name"] for p in room["players"]],
         "players_connected": [bool(p.get("connected")) for p in room["players"]],
+        "elo_result": room.get("last_elo_result"),
     }
     for p in room["players"]:
         if p.get("sid"):
@@ -831,14 +851,20 @@ def handle_join_room(data):
     p0 = room["players"][0]
     p1 = room["players"][1]
 
+    elo_payload = _pvp_elo_payload(room) or {}
+    elos = elo_payload.get("elos")
+    swing = elo_payload.get("swing")
+
     if p0.get("sid"):
         socketio.emit("joined", {
             "room_id": room_id, "player_id": 0, "mode": "pvp", "opponent": p1["name"],
             "first_player": fp, "token": p0["token"],
+            "elos": elos, "my_swing": swing[0] if swing else None,
         }, to=p0["sid"])
     emit("joined", {
         "room_id": room_id, "player_id": 1, "mode": "pvp", "opponent": p0["name"],
         "first_player": fp, "token": token,
+        "elos": elos, "my_swing": swing[1] if swing else None,
     })
     _broadcast_state(room_id)
     _broadcast_rooms_update()
@@ -879,6 +905,7 @@ def handle_spectate(data):
     p0 = room["players"][0] if len(room["players"]) > 0 else None
     p1 = room["players"][1] if len(room["players"]) > 1 else None
 
+    spec_elo_payload = _pvp_elo_payload(room) if room["mode"] == "pvp" else None
     emit("spectator_joined", {
         "room_id": room_id,
         "mode": room["mode"],
@@ -889,6 +916,7 @@ def handle_spectate(data):
         "your_name": name,
         "token": token,
         "started": bool(room.get("started")),
+        "elos": (spec_elo_payload or {}).get("elos"),
     })
 
     socketio.emit("spectator_update", {
@@ -935,6 +963,8 @@ def handle_rejoin(data):
         else:
             opp_name = "Opponent"
 
+        rejoin_elo = _pvp_elo_payload(room) if room["mode"] == "pvp" else None
+        rejoin_swing = (rejoin_elo or {}).get("swing")
         emit("joined", {
             "room_id": room_id,
             "player_id": player["player_id"],
@@ -944,6 +974,8 @@ def handle_rejoin(data):
             "first_player": room.get("first_player", 0),
             "token": player["token"],
             "rejoin": True,
+            "elos": (rejoin_elo or {}).get("elos"),
+            "my_swing": rejoin_swing[player["player_id"]] if rejoin_swing else None,
         })
 
         socketio.emit("opponent_reconnected", {
@@ -972,6 +1004,7 @@ def handle_rejoin(data):
 
         p0 = room["players"][0] if len(room["players"]) > 0 else None
         p1 = room["players"][1] if len(room["players"]) > 1 else None
+        spec_elo_payload = _pvp_elo_payload(room) if room["mode"] == "pvp" else None
         emit("spectator_joined", {
             "room_id": room_id,
             "mode": room["mode"],
@@ -983,6 +1016,7 @@ def handle_rejoin(data):
             "token": spec["token"],
             "started": bool(room.get("started")),
             "rejoin": True,
+            "elos": (spec_elo_payload or {}).get("elos"),
         })
         if room.get("game"):
             _broadcast_state(room_id)
@@ -1079,13 +1113,25 @@ def handle_rematch():
     room["game"] = MancalaGame(first_player=fp)
     room["score_recorded"] = False
     room["forfeit"] = None
+    room["last_elo_result"] = None
     room["ai_task_token"] = room.get("ai_task_token", 0) + 1
+
+    elo_payload = _pvp_elo_payload(room) if room["mode"] == "pvp" else None
+    elos = (elo_payload or {}).get("elos")
+    swing = (elo_payload or {}).get("swing")
     for p in room["players"]:
         if p.get("sid"):
-            socketio.emit("new_game", {"first_player": fp}, to=p["sid"])
+            my_swing = swing[p["player_id"]] if swing else None
+            socketio.emit("new_game", {
+                "first_player": fp,
+                "elos": elos, "my_swing": my_swing,
+            }, to=p["sid"])
     for s in room["spectators"]:
         if s.get("sid"):
-            socketio.emit("new_game", {"first_player": fp}, to=s["sid"])
+            socketio.emit("new_game", {
+                "first_player": fp,
+                "elos": elos, "my_swing": None,
+            }, to=s["sid"])
     _broadcast_state(room_id)
     _broadcast_rooms_update()
     if room["mode"] == "ai" and room["game"].current_player == 1:
