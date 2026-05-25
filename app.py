@@ -548,10 +548,7 @@ def handle_spectate(data):
     if not room:
         emit("error", {"message": f'Room "{room_id}" not found.'})
         return
-    if not room.get("started") or not room.get("game"):
-        emit("error", {"message": "That game hasn't started yet."})
-        return
-    if room["game"].game_over:
+    if room.get("game") and room["game"].game_over:
         emit("error", {"message": "That game is already over."})
         return
     if len(room["spectators"]) >= MAX_SPECTATORS:
@@ -573,10 +570,11 @@ def handle_spectate(data):
         "mode": room["mode"],
         "difficulty": room.get("difficulty"),
         "p0_name": p0["name"] if p0 else "Player 1",
-        "p1_name": p1["name"] if p1 else "Player 2",
+        "p1_name": p1["name"] if p1 else None,
         "first_player": room.get("first_player", 0),
         "your_name": name,
         "token": token,
+        "started": bool(room.get("started")),
     })
 
     socketio.emit("spectator_update", {
@@ -584,7 +582,8 @@ def handle_spectate(data):
         "joined": name,
     }, to=room_id)
 
-    _broadcast_state(room_id)
+    if room.get("game"):
+        _broadcast_state(room_id)
     _broadcast_rooms_update()
 
 
@@ -664,13 +663,15 @@ def handle_rejoin(data):
             "mode": room["mode"],
             "difficulty": room.get("difficulty"),
             "p0_name": p0["name"] if p0 else "Player 1",
-            "p1_name": p1["name"] if p1 else "Player 2",
+            "p1_name": p1["name"] if p1 else None,
             "first_player": room.get("first_player", 0),
             "your_name": spec["name"],
             "token": spec["token"],
+            "started": bool(room.get("started")),
             "rejoin": True,
         })
-        _broadcast_state(room_id)
+        if room.get("game"):
+            _broadcast_state(room_id)
         return
 
     emit("rejoin_failed", {"message": "Could not rejoin (session expired)."})

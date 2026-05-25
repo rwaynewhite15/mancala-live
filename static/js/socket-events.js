@@ -59,7 +59,7 @@ socket.on('spectator_joined', data => {
   S.difficulty  = data.difficulty || null;
   S.roomId      = data.room_id;
   S.myName      = data.your_name;
-  S.oppName     = data.p1_name || 'Player 2';
+  S.oppName     = data.p1_name || 'Waiting…';
   if (data.token) S.token = data.token;
   saveSession();
 
@@ -78,11 +78,12 @@ socket.on('spectator_joined', data => {
   document.getElementById('my-record').textContent  = '';
   document.getElementById('opp-record').textContent = '';
   document.getElementById('my-name-text').textContent  = data.p0_name || 'Player 1';
-  document.getElementById('opp-name-text').textContent = data.p1_name || 'Player 2';
+  document.getElementById('opp-name-text').textContent = data.p1_name || 'Waiting…';
   document.getElementById('gh-room').textContent = `Room: ${S.roomId} (spectating)`;
+  const p1Label = data.p1_name || 'opponent';
   document.getElementById('gh-mode').textContent =
     data.mode === 'ai' ? `Spectating: ${data.p0_name} vs AI (${data.difficulty})`
-                       : `Spectating: ${data.p0_name} vs ${data.p1_name}`;
+                       : `Spectating: ${data.p0_name} vs ${p1Label}`;
 
   // Spectators can chat in any mode (server tags messages).
   document.getElementById('chat-input-row').style.display = 'flex';
@@ -90,6 +91,13 @@ socket.on('spectator_joined', data => {
   buildBoard();
   // Disable my-pit hover/click visuals for spectators
   document.querySelectorAll('.my-pit').forEach(el => el.classList.add('spectator-locked'));
+
+  // If the game hasn't started yet, render a placeholder board so the spectator
+  // doesn't see empty pits.
+  if (!data.started) {
+    renderPreGameBoard();
+    document.getElementById('status-bar').textContent = 'Waiting for opponent to join…';
+  }
 
   showScreen('game');
   loadGameLeaderboard();
@@ -141,8 +149,15 @@ socket.on('state', state => {
   // Sync the player names if the server provided them
   if (Array.isArray(state.player_names)) {
     if (S.isSpectator) {
-      document.getElementById('my-name-text').textContent  = state.player_names[0] || 'Player 1';
-      document.getElementById('opp-name-text').textContent = state.player_names[1] || 'Player 2';
+      const p0Name = state.player_names[0] || 'Player 1';
+      const p1Name = state.player_names[1] || 'Player 2';
+      document.getElementById('my-name-text').textContent  = p0Name;
+      document.getElementById('opp-name-text').textContent = p1Name;
+      S.oppName = p1Name;
+      // Update the header label in case we joined while waiting.
+      document.getElementById('gh-mode').textContent =
+        S.mode === 'ai' ? `Spectating: ${p0Name} vs AI (${S.difficulty})`
+                        : `Spectating: ${p0Name} vs ${p1Name}`;
     } else if (S.playerId !== null) {
       const oppName = state.player_names[1 - S.playerId];
       if (oppName) {
@@ -293,19 +308,20 @@ function renderRoomsList(roomsList) {
     const status = !r.started ? 'Waiting for opponent'
                   : (r.any_disconnected ? 'In progress (player disconnected)' : 'In progress');
     const modeLabel = r.mode === 'ai' ? `vs AI (${r.difficulty || 'medium'})` : 'PvP';
-    const canSpectate = r.started && r.in_progress;
     const specCount = r.spectator_count ? ` · 👁 ${r.spectator_count}` : '';
+    const code = escHtml(r.room_id);
+    const canJoin = !r.started && r.mode === 'pvp';
+    const joinBtn  = canJoin
+      ? `<button class="btn btn-primary room-row-btn" onclick="joinFromList('${code}')">Join</button>`
+      : '';
+    const watchBtn = `<button class="btn btn-secondary room-row-btn" onclick="spectateRoom('${code}')">Watch</button>`;
     return `
       <div class="room-row">
         <div class="room-row-main">
           <div class="room-row-players">${players}</div>
-          <div class="room-row-meta">${modeLabel} · ${escHtml(r.room_id)} · ${status}${specCount}</div>
+          <div class="room-row-meta">${modeLabel} · ${code} · ${status}${specCount}</div>
         </div>
-        <button class="btn btn-secondary room-row-btn"
-                ${canSpectate ? '' : 'disabled'}
-                onclick="spectateRoom('${escHtml(r.room_id)}')">
-          ${canSpectate ? 'Watch' : '—'}
-        </button>
+        <div class="room-row-actions">${joinBtn}${watchBtn}</div>
       </div>`;
   }).join('');
   body.innerHTML = html;

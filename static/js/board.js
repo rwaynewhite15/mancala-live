@@ -134,6 +134,17 @@ function renderState(state) {
   }
 }
 
+// Render a default starting Mancala board (4 stones per pit, empty stores)
+// for spectators who joined before the game started.
+function renderPreGameBoard() {
+  const placeholder = new Array(14).fill(4);
+  placeholder[P1_STORE] = 0;
+  placeholder[P2_STORE] = 0;
+  applyBoard(placeholder, null, null);
+  document.getElementById('my-bar').classList.remove('active-player');
+  document.getElementById('opp-bar').classList.remove('active-player');
+}
+
 function updateSpectatorBadge(count) {
   if (typeof count !== 'number') return;
   S.spectatorCount = count;

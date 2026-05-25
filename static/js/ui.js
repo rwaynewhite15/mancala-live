@@ -59,6 +59,13 @@ function joinRoom() {
   S.myName = getName();
   socket.emit('join_room_request', { name: S.myName, room_id: code });
 }
+function joinFromList(roomCode) {
+  clearError();
+  const code = String(roomCode || '').trim().toUpperCase();
+  if (code.length !== 6) return;
+  S.myName = getName();
+  socket.emit('join_room_request', { name: S.myName, room_id: code });
+}
 function spectateRoom(roomCodeArg) {
   clearError();
   const code = (roomCodeArg
