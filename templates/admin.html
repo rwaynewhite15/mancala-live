@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin – Mancala</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #1a1a2e; color: #eee; padding: 16px; }
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  h1 { font-size: 1.3rem; }
+  h2 { font-size: 1.05rem; margin: 20px 0 10px; color: #a8c; }
+  .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer;
+         font-size: .85rem; font-weight: bold; }
+  .btn-danger { background: #e94560; color: #fff; }
+  .btn-secondary { background: #444; color: #ccc; }
+  .btn-info { background: #0f3460; color: #ccc; border: 1px solid #555; }
+  form { display: inline; }
+  table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  th { text-align: left; padding: 8px 6px; border-bottom: 1px solid #333; color: #aaa; font-weight: normal; white-space: nowrap; }
+  td { padding: 8px 6px; border-bottom: 1px solid #222; vertical-align: middle; }
+  tr:hover td { background: #16213e; }
+  .win  { color: #4caf50; }
+  .loss { color: #e94560; }
+  .tie  { color: #aaa; }
+  .elo-up   { color: #4caf50; font-size: .78rem; }
+  .elo-down { color: #e94560; font-size: .78rem; }
+  .actions { display: flex; gap: 20px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tag { font-size: .72rem; padding: 2px 6px; border-radius: 4px; background: #333; color: #aaa; }
+  @media (max-width: 480px) {
+    .hide-sm { display: none; }
+    td, th { padding: 6px 4px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Admin Panel</h1>
+  <form method="POST" action="/admin/logout">
+    <button class="btn btn-secondary" type="submit">Logout</button>
+  </form>
+</header>
+
+<div class="actions">
+  <form method="POST" action="/admin/recalc"
+        onsubmit="return confirm('Recalculate all ELO from scratch?')">
+    <button class="btn btn-info" type="submit">Recalc All ELO</button>
+  </form>
+</div>
+
+<h2>PvP Rankings ({{ players|length }})</h2>
+<table>
+  <thead>
+    <tr><th>#</th><th>Player</th><th>ELO</th><th>W</th><th>L</th><th>T</th><th class="hide-sm">GP</th></tr>
+  </thead>
+  <tbody>
+    {% for p in players %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ p[0] }}</td>
+      <td><strong>{{ p[1] }}</strong></td>
+      <td class="win">{{ p[2] }}</td>
+      <td class="loss">{{ p[3] }}</td>
+      <td class="tie">{{ p[4] }}</td>
+      <td class="hide-sm">{{ p[5] }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" style="text-align:center;color:#666;padding:20px">No players yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Game History ({{ games|length }} most recent)</h2>
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Players</th>
+      <th class="hide-sm">Score</th>
+      <th>Result</th>
+      <th class="hide-sm">ELO ±</th>
+      <th class="hide-sm">Date</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for g in games %}
+    {% set gid = g[0] %}
+    {% set p1d = g[1] %}
+    {% set p2d = g[2] %}
+    {% set p1s = g[3] %}
+    {% set p2s = g[4] %}
+    {% set winner = g[5] %}
+    {% set p1_elo_before = g[6] %}
+    {% set p2_elo_before = g[7] %}
+    {% set p1_elo_after  = g[8] %}
+    {% set p2_elo_after  = g[9] %}
+    {% set p1_change = p1_elo_after - p1_elo_before %}
+    {% set p2_change = p2_elo_after - p2_elo_before %}
+    {% set played_at = g[10] %}
+    <tr>
+      <td><span class="tag">#{{ gid }}</span></td>
+      <td>{{ p1d }}<br><span style="color:#888">vs {{ p2d }}</span></td>
+      <td class="hide-sm">{{ p1s }}–{{ p2s }}</td>
+      <td>
+        {% if winner == p1d.lower() %}
+          <span class="win">{{ p1d }}</span>
+        {% elif winner == p2d.lower() %}
+          <span class="win">{{ p2d }}</span>
+        {% else %}
+          <span class="tie">Tie</span>
+        {% endif %}
+      </td>
+      <td class="hide-sm">
+        <span class="{{ 'elo-up' if p1_change >= 0 else 'elo-down' }}">{{ '+' if p1_change >= 0 else '' }}{{ p1_change }}</span>
+        /
+        <span class="{{ 'elo-up' if p2_change >= 0 else 'elo-down' }}">{{ '+' if p2_change >= 0 else '' }}{{ p2_change }}</span>
+      </td>
+      <td class="hide-sm" style="color:#666;font-size:.75rem">{{ played_at|string|truncate(16, killwords=True, end='') }}</td>
+      <td>
+        <form method="POST" action="/admin/delete_game/{{ gid }}"
+              onsubmit="return confirm('Delete game #{{ gid }} between {{ p1d }} and {{ p2d }}? ELO will be recalculated.')">
+          <button class="btn btn-danger" type="submit">Del</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" style="text-align:center;color:#666;padding:20px">No games yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+</body>
+</html>

@@ -30,7 +30,7 @@
       <h3>How to play?</h3>
       <div class="toggle">
         <button class="toggle-btn active" id="tab-create" onclick="showTab('create')">Create Room</button>
-        <button class="toggle-btn" id="tab-join"   onclick="showTab('join')">Join Room</button>
+        <button class="toggle-btn" id="tab-join"   onclick="showTab('join')">Join Game</button>
         <button class="toggle-btn" id="tab-spectate" onclick="showTab('spectate')">Spectate</button>
       </div>
 
@@ -58,9 +58,10 @@
       </div>
 
       <div id="panel-join" class="hidden">
-        <input type="text" id="room-code-input" placeholder="Room code (6 chars)" maxlength="6"
-               autocomplete="off" style="text-transform:uppercase;letter-spacing:4px;font-size:1.15rem">
-        <button class="btn btn-primary" onclick="joinRoom()">Join Game</button>
+        <h3>Open Games</h3>
+        <div id="join-rooms-body" class="rooms-list">
+          <p style="color:var(--muted);text-align:center;font-size:.9rem;padding:14px">Loading...</p>
+        </div>
       </div>
 
       <div id="panel-spectate" class="hidden">

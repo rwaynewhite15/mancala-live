@@ -17,7 +17,7 @@ function showTab(tab) {
     if (tabBtn) tabBtn.classList.toggle('active', t===tab);
     if (panel)  panel.classList.toggle('hidden', t!==tab);
   });
-  if (tab === 'spectate') {
+  if (tab === 'spectate' || tab === 'join') {
     if (typeof socket !== 'undefined' && socket.connected) socket.emit('subscribe_lobby');
   }
   clearError();
@@ -51,13 +51,6 @@ function createRoom() {
   S.difficulty = document.getElementById('difficulty-select').value;
   const firstPlayer = document.getElementById('first-move-select').value;
   socket.emit('create_room', { name: S.myName, mode: S.mode, difficulty: S.difficulty, first_player: firstPlayer });
-}
-function joinRoom() {
-  clearError();
-  const code = document.getElementById('room-code-input').value.trim().toUpperCase();
-  if (code.length !== 6) { showError('Enter the full 6-character room code.'); return; }
-  S.myName = getName();
-  socket.emit('join_room_request', { name: S.myName, room_id: code });
 }
 function joinFromList(roomCode) {
   clearError();

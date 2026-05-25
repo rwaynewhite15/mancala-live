@@ -8,14 +8,14 @@ import string
 import time
 import uuid
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_socketio import SocketIO, join_room, leave_room, emit
 
 from game import (INITIAL_STONES, NUM_PITS, AI_STARTUP_DELAY, AI_MOVE_DELAY,
                   P1_PITS, P1_STORE, P2_PITS, P2_STORE,
                   PLAYER_PITS, PLAYER_STORE, OPPOSITE, MancalaGame)
 from ai import get_ai_move
-from db import _db_conn, _PH, _USE_PG, _record_pvp_game
+from db import _db_conn, _PH, _USE_PG, _record_pvp_game, _calc_elo
 
 # ── Flask / SocketIO setup ────────────────────────────────────────────────────
 
@@ -410,6 +410,147 @@ def pvp_player(name):
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ── Admin panel ───────────────────────────────────────────────────────────────
+
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+
+
+def _admin_authed():
+    return bool(ADMIN_PASSWORD) and session.get("admin_authed") is True
+
+
+def _recalc_elo_from_games(cur):
+    """Replay all pvp_games in chronological order to rebuild players table stats."""
+    cur.execute(
+        "SELECT id, p1_name, p2_name, p1_display, p2_display, winner_name "
+        "FROM pvp_games ORDER BY played_at ASC, id ASC"
+    )
+    games = cur.fetchall()
+
+    # collect all player keys that exist in pvp_games
+    keys = set()
+    for g in games:
+        keys.add(g[1]); keys.add(g[2])
+
+    # reset all affected players
+    for key in keys:
+        cur.execute(
+            f"UPDATE players SET elo=1000, wins=0, losses=0, ties=0, games_played=0 "
+            f"WHERE name={_PH}", (key,)
+        )
+
+    elo_state = {k: 1000 for k in keys}
+
+    for row in games:
+        gid, p1_key, p2_key, p1_disp, p2_disp, winner_key = row
+        ra, rb = elo_state.get(p1_key, 1000), elo_state.get(p2_key, 1000)
+        outcome = 1.0 if winner_key == p1_key else (0.0 if winner_key == p2_key else 0.5)
+        new_ra, new_rb = _calc_elo(ra, rb, outcome)
+        elo_state[p1_key], elo_state[p2_key] = new_ra, new_rb
+
+        p1_w, p1_l, p1_t = (1,0,0) if winner_key==p1_key else ((0,1,0) if winner_key==p2_key else (0,0,1))
+        p2_w, p2_l, p2_t = (1,0,0) if winner_key==p2_key else ((0,1,0) if winner_key==p1_key else (0,0,1))
+
+        upsert = (
+            f"INSERT INTO players (name,display_name,elo,wins,losses,ties,games_played) "
+            f"VALUES ({_PH},{_PH},{_PH},{_PH},{_PH},{_PH},1) "
+            f"ON CONFLICT (name) DO UPDATE SET "
+            f"display_name=EXCLUDED.display_name,elo=EXCLUDED.elo,"
+            f"wins=players.wins+EXCLUDED.wins,losses=players.losses+EXCLUDED.losses,"
+            f"ties=players.ties+EXCLUDED.ties,games_played=players.games_played+1"
+        )
+        cur.execute(upsert, (p1_key, p1_disp, new_ra, p1_w, p1_l, p1_t))
+        cur.execute(upsert, (p2_key, p2_disp, new_rb, p2_w, p2_l, p2_t))
+
+        # update stored elo columns in pvp_games for consistency
+        cur.execute(
+            f"UPDATE pvp_games SET p1_elo_before={_PH},p2_elo_before={_PH},"
+            f"p1_elo_after={_PH},p2_elo_after={_PH},"
+            f"p1_elo_change={_PH},p2_elo_change={_PH} WHERE id={_PH}",
+            (ra, rb, new_ra, new_rb, new_ra - ra, new_rb - rb, gid)
+        )
+
+    # remove players with no remaining games
+    cur.execute(
+        f"DELETE FROM players WHERE name NOT IN "
+        f"(SELECT p1_name FROM pvp_games UNION SELECT p2_name FROM pvp_games)"
+    )
+
+
+@app.route("/admin", methods=["GET", "POST"])
+def admin_panel():
+    if not ADMIN_PASSWORD:
+        return "Admin not configured.", 403
+
+    error = None
+    if request.method == "POST" and not _admin_authed():
+        pw = request.form.get("password", "")
+        if pw == ADMIN_PASSWORD:
+            session["admin_authed"] = True
+        else:
+            error = "Wrong password."
+
+    if not _admin_authed():
+        return render_template("admin_login.html", error=error)
+
+    try:
+        conn = _db_conn()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, p1_display, p2_display, p1_stones, p2_stones, winner_name, "
+            "p1_elo_before, p2_elo_before, p1_elo_after, p2_elo_after, played_at "
+            "FROM pvp_games ORDER BY played_at DESC, id DESC LIMIT 100"
+        )
+        games = cur.fetchall()
+        cur.execute(
+            "SELECT display_name, elo, wins, losses, ties, games_played "
+            "FROM players ORDER BY elo DESC LIMIT 30"
+        )
+        players = cur.fetchall()
+        conn.close()
+    except Exception as e:
+        return f"DB error: {e}", 500
+
+    return render_template("admin.html", games=games, players=players)
+
+
+@app.route("/admin/delete_game/<int:game_id>", methods=["POST"])
+def admin_delete_game(game_id):
+    if not ADMIN_PASSWORD or not _admin_authed():
+        return redirect(url_for("admin_panel"))
+    try:
+        conn = _db_conn()
+        cur = conn.cursor()
+        cur.execute(f"DELETE FROM pvp_games WHERE id={_PH}", (game_id,))
+        _recalc_elo_from_games(cur)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        return f"DB error: {e}", 500
+    return redirect(url_for("admin_panel"))
+
+
+@app.route("/admin/recalc", methods=["POST"])
+def admin_recalc():
+    if not ADMIN_PASSWORD or not _admin_authed():
+        return redirect(url_for("admin_panel"))
+    try:
+        conn = _db_conn()
+        cur = conn.cursor()
+        _recalc_elo_from_games(cur)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        return f"DB error: {e}", 500
+    return redirect(url_for("admin_panel"))
+
+
+@app.route("/admin/logout", methods=["POST"])
+def admin_logout():
+    session.pop("admin_authed", None)
+    return redirect(url_for("admin_panel"))
 
 
 # ── Socket events ─────────────────────────────────────────────────────────────
