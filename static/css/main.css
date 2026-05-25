@@ -60,14 +60,17 @@ header {
   box-shadow: 0 4px 24px rgba(0,0,0,0.5);
 }
 
-input[type="text"] {
+input[type="text"], input[type="password"] {
   width: 100%; background: #052828; border: 1.5px solid var(--teal);
   border-radius: 8px; color: var(--cream); font-size: 1rem;
   padding: 10px 14px; margin-bottom: 14px; outline: none;
   transition: border-color .2s, box-shadow .2s;
 }
-input[type="text"]:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(254,205,26,0.12); }
-input[type="text"]::placeholder { color: var(--muted); }
+input[type="text"]:focus, input[type="password"]:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(254,205,26,0.12); }
+input[type="text"]::placeholder, input[type="password"]::placeholder { color: var(--muted); }
+.field-hint { font-size: .82rem; margin: -8px 0 12px; }
+.btn-link { background: none; border: none; color: var(--teal); font-size: .85rem;
+            cursor: pointer; padding: 0; margin-bottom: 14px; text-decoration: underline; display: block; }
 
 select {
   width: 100%; background: #052828; border: 1.5px solid var(--teal);

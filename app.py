@@ -2,6 +2,7 @@
 Mancala - Web Server (Flask-SocketIO)
 Board indices: 0-5 (P1 pits), 6 (P1 store), 7-12 (P2 pits), 13 (P2 store).
 """
+import hashlib
 import os
 import random
 import string
@@ -427,6 +428,60 @@ def player_names():
         return jsonify([])
 
 
+@app.route("/players/check_name")
+def check_player_name():
+    name = request.args.get("name", "").strip().lower()
+    if not name:
+        return jsonify({"exists": False, "protected": False})
+    try:
+        conn = _db_conn()
+        cur  = conn.cursor()
+        cur.execute(f"SELECT password_hash FROM players WHERE name={_PH}", (name,))
+        row  = cur.fetchone()
+        conn.close()
+        return jsonify({"exists": row is not None, "protected": bool(row and row[0])})
+    except Exception:
+        return jsonify({"exists": False, "protected": False})
+
+
+def _handle_player_auth(name, password):
+    """Verify or set a player password. Returns an error string, or None if OK."""
+    key = name.strip().lower()
+    if not key:
+        return None
+    try:
+        conn = _db_conn()
+        cur  = conn.cursor()
+        cur.execute(f"SELECT password_hash FROM players WHERE name={_PH}", (key,))
+        row  = cur.fetchone()
+
+        if row and row[0]:
+            # Name is protected — must verify
+            if not password:
+                conn.close()
+                return "This name is password-protected. Enter your password."
+            if hashlib.sha256(password.encode()).hexdigest() != row[0]:
+                conn.close()
+                return "Incorrect password."
+        elif password:
+            # Name is unprotected or new — set the password now
+            ph = hashlib.sha256(password.encode()).hexdigest()
+            if row:
+                cur.execute(f"UPDATE players SET password_hash={_PH} WHERE name={_PH}", (ph, key))
+            else:
+                cur.execute(
+                    f"INSERT INTO players (name, display_name, elo, wins, losses, ties, games_played, password_hash) "
+                    f"VALUES ({_PH},{_PH},1000,0,0,0,0,{_PH})",
+                    (key, name.strip(), ph)
+                )
+            conn.commit()
+
+        conn.close()
+    except Exception:
+        pass  # Don't block a game on a DB error
+    return None
+
+
 # ── Admin panel ───────────────────────────────────────────────────────────────
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
@@ -490,7 +545,8 @@ def _recalc_elo_from_games(cur):
     # remove players with no remaining games
     cur.execute(
         f"DELETE FROM players WHERE name NOT IN "
-        f"(SELECT p1_name FROM pvp_games UNION SELECT p2_name FROM pvp_games)"
+        f"(SELECT p1_name FROM pvp_games UNION SELECT p2_name FROM pvp_games) "
+        f"AND (password_hash IS NULL OR password_hash = '')"
     )
 
 
@@ -625,8 +681,14 @@ def handle_create_room(data):
     mode = data.get("mode", "pvp")
     difficulty = data.get("difficulty", "medium")
     name = str(data.get("name", "Player"))[:20].strip() or "Player"
+    password = str(data.get("password", "")).strip()
     fp_raw = data.get("first_player", "0")
     first_player = random.randint(0, 1) if fp_raw == "random" else int(fp_raw)
+
+    err = _handle_player_auth(name, password)
+    if err:
+        emit("error", {"message": err})
+        return
 
     token = _make_token()
     room_id = _make_room_id()
@@ -682,6 +744,12 @@ def handle_join_room(data):
     sid = request.sid
     room_id = str(data.get("room_id", "")).strip().upper()
     name = str(data.get("name", "Player"))[:20].strip() or "Player"
+    password = str(data.get("password", "")).strip()
+
+    err = _handle_player_auth(name, password)
+    if err:
+        emit("error", {"message": err})
+        return
 
     room = rooms.get(room_id)
     if not room:
@@ -730,6 +798,14 @@ def handle_spectate(data):
     sid = request.sid
     room_id = str(data.get("room_id", "")).strip().upper()
     raw_name = str(data.get("name", "")).strip()[:20]
+    password = str(data.get("password", "")).strip()
+
+    # Only password-check if the user provided a name (auto-names don't need it)
+    if raw_name:
+        err = _handle_player_auth(raw_name, password)
+        if err:
+            emit("error", {"message": err})
+            return
 
     room = rooms.get(room_id)
     if not room:

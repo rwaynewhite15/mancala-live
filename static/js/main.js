@@ -1,8 +1,49 @@
-// ── Name autocomplete ─────────────────────────────────────────────────────
+// ── Name autocomplete + password protection ───────────────────────────────
 (function () {
-  const input = document.getElementById('name-input');
-  const box   = document.getElementById('name-suggestions');
+  const input      = document.getElementById('name-input');
+  const box        = document.getElementById('name-suggestions');
+  const pwField    = document.getElementById('name-password');
+  const pwHint     = document.getElementById('password-hint');
+  const protectBtn = document.getElementById('protect-name-btn');
   let activeIdx = -1;
+
+  // Show password field because name is protected
+  function requirePassword() {
+    pwField.classList.remove('hidden');
+    pwHint.textContent = '🔒 This name is password-protected';
+    pwHint.style.color = 'var(--gold)';
+    pwHint.classList.remove('hidden');
+    protectBtn.classList.add('hidden');
+  }
+
+  // Show optional protect button for unprotected / new names
+  function offerProtect(nameEntered) {
+    pwField.classList.add('hidden');
+    pwField.value = '';
+    pwHint.classList.add('hidden');
+    protectBtn.classList.toggle('hidden', !nameEntered);
+  }
+
+  protectBtn.addEventListener('click', () => {
+    protectBtn.classList.add('hidden');
+    pwField.classList.remove('hidden');
+    pwHint.textContent = 'Create a password to protect this name (optional)';
+    pwHint.style.color = 'var(--muted)';
+    pwHint.classList.remove('hidden');
+    pwField.focus();
+  });
+
+  let nameCheckTimer = null;
+  async function checkNameStatus(name) {
+    const n = (name ?? input.value).trim();
+    if (!n) { offerProtect(false); return; }
+    try {
+      const res = await fetch(`/players/check_name?name=${encodeURIComponent(n)}`);
+      const d   = await res.json();
+      if (d.protected) requirePassword();
+      else offerProtect(true);
+    } catch(e) { offerProtect(!!n); }
+  }
 
   function showSuggestions(matches) {
     activeIdx = -1;
@@ -18,10 +59,13 @@
   function pickSuggestion(name) {
     input.value = name;
     hideSuggestions();
+    checkNameStatus(name);
   }
 
   input.addEventListener('input', () => {
     showSuggestions(getPlayerNameSuggestions(input.value.trim()));
+    clearTimeout(nameCheckTimer);
+    nameCheckTimer = setTimeout(() => checkNameStatus(), 500);
   });
 
   input.addEventListener('focus', () => {
