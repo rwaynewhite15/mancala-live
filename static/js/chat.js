@@ -1,13 +1,14 @@
 // ── Chat ───────────────────────────────────────────────────────────────────
-function addChat(type, text, name) {
+function addChat(type, text, name, role) {
   const box = document.getElementById('chat-messages');
   const div = document.createElement('div');
   if (type === 'system') {
     div.className = 'chat-msg system';
     div.textContent = text;
   } else {
-    div.className = 'chat-msg';
-    div.innerHTML = `<span class="chat-who">${escHtml(name)}:</span> ${escHtml(text)}`;
+    const tag = role === 'spectator' ? '<span class="chat-tag">[Spec]</span> ' : '';
+    div.className = 'chat-msg' + (role === 'spectator' ? ' spec' : '');
+    div.innerHTML = `${tag}<span class="chat-who">${escHtml(name)}:</span> ${escHtml(text)}`;
   }
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;

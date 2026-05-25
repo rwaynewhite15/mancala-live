@@ -31,6 +31,7 @@
       <div class="toggle">
         <button class="toggle-btn active" id="tab-create" onclick="showTab('create')">Create Room</button>
         <button class="toggle-btn" id="tab-join"   onclick="showTab('join')">Join Room</button>
+        <button class="toggle-btn" id="tab-spectate" onclick="showTab('spectate')">Spectate</button>
       </div>
 
       <div id="panel-create">
@@ -60,6 +61,17 @@
         <input type="text" id="room-code-input" placeholder="Room code (6 chars)" maxlength="6"
                autocomplete="off" style="text-transform:uppercase;letter-spacing:4px;font-size:1.15rem">
         <button class="btn btn-primary" onclick="joinRoom()">Join Game</button>
+      </div>
+
+      <div id="panel-spectate" class="hidden">
+        <h3>Active Matches</h3>
+        <div id="spec-rooms-body" class="rooms-list">
+          <p style="color:var(--muted);text-align:center;font-size:.9rem;padding:14px">Loading...</p>
+        </div>
+        <h3 style="margin-top:14px">Or watch a specific room</h3>
+        <input type="text" id="spec-code-input" placeholder="Room code (6 chars)" maxlength="6"
+               autocomplete="off" style="text-transform:uppercase;letter-spacing:4px;font-size:1.15rem">
+        <button class="btn btn-secondary" onclick="spectateRoom()">Watch</button>
       </div>
     </div>
 
@@ -119,7 +131,22 @@
     <div id="game-header">
       <span id="gh-mode"></span>
       <span id="gh-room"></span>
+      <span id="spectator-badge" class="hidden"></span>
       <button class="btn btn-secondary" style="font-size:.75rem;padding:4px 12px" onclick="goToMainMenu()">Main Menu</button>
+    </div>
+
+    <div id="disconnect-banner" class="hidden">
+      <div>
+        <span id="dc-name">Opponent</span> disconnected
+        — reconnecting in <span id="dc-countdown">--</span>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="claimDisconnectWin()">Claim Win</button>
+      </div>
+    </div>
+
+    <div id="forfeit-banner" class="hidden">
+      <span id="forfeit-msg"></span>
     </div>
 
     <div id="board-wrapper">
@@ -172,7 +199,7 @@
     <div id="game-over-scores"></div>
     <div id="game-over-record" style="color:var(--gold);font-size:.95rem;margin-top:8px"></div>
     <div style="display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="requestRematch()">Rematch</button>
+      <button id="rematch-btn" class="btn btn-primary" onclick="requestRematch()">Rematch</button>
       <button class="btn btn-secondary" onclick="goToMainMenu()">Main Menu</button>
     </div>
   </div>
