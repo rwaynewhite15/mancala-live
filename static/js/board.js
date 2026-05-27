@@ -210,6 +210,7 @@ function showGameOver(state) {
   // Hide rematch button for spectators
   const rematchBtn = document.getElementById('rematch-btn');
   if (rematchBtn) rematchBtn.style.display = S.isSpectator ? 'none' : '';
+  resetRematchUI();
 
   document.getElementById('game-over-overlay').classList.add('show');
 

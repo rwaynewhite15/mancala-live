@@ -126,12 +126,18 @@ function onGameScreen() {
   return document.getElementById('screen-game').classList.contains('active');
 }
 
+socket.on('rematch_status', data => {
+  if (!onGameScreen()) return;
+  applyRematchStatus(data && data.requested);
+});
+
 socket.on('new_game', data => {
   if (!onGameScreen()) return;
   cancelAnimations();
   prevBoard = null;
   hideDisconnectBanner();
   hideForfeitBanner();
+  resetRematchUI();
   document.getElementById('game-over-overlay').classList.remove('show');
   if (Array.isArray(data.elos)) S.elos = data.elos;
   if (data.my_swing) S.mySwing = data.my_swing;

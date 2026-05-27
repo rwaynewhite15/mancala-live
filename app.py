@@ -35,7 +35,7 @@ MAX_SPECTATORS = 20
 #   spectators: [{sid, name, token}, ...],
 #   started, scores, games_played, score_recorded,
 #   ai_task_token, state_seq, next_first_player, first_player,
-#   forfeit, disconnect_tokens, cleanup_token,
+#   forfeit, disconnect_tokens, cleanup_token, rematch_requests,
 # }
 rooms = {}
 sid_to_room = {}  # sid -> room_id
@@ -781,6 +781,7 @@ def handle_create_room(data):
         "forfeit": None,
         "disconnect_tokens": {},
         "cleanup_token": None,
+        "rematch_requests": set(),
     }
     sid_to_room[sid] = room_id
     join_room(room_id)
@@ -984,6 +985,8 @@ def handle_rejoin(data):
         }, to=room_id, skip_sid=sid)
 
         _broadcast_state(room_id)
+        if room.get("rematch_requests"):
+            _broadcast_rematch_status(room_id)
         _broadcast_rooms_update()
 
         # If it was AI's turn when the human dropped, resume AI loop.
@@ -1020,6 +1023,8 @@ def handle_rejoin(data):
         })
         if room.get("game"):
             _broadcast_state(room_id)
+        if room.get("rematch_requests"):
+            _broadcast_rematch_status(room_id)
         return
 
     emit("rejoin_failed", {"message": "Could not rejoin (session expired)."})
@@ -1089,24 +1094,25 @@ def handle_chat(data):
         }, to=room_id)
 
 
-@socketio.on("rematch")
-def handle_rematch():
-    sid = request.sid
-    room_id = sid_to_room.get(sid)
+def _broadcast_rematch_status(room_id):
     room = rooms.get(room_id)
-    if not room or not room["started"] or not room["game"]:
+    if not room:
         return
-    role, person = _find_role(room, sid)
-    if role != "player":
-        return
-    if not room["game"].game_over:
-        return
-    if room["mode"] == "pvp":
-        other = _opponent(room, person)
-        if not other or not other.get("connected"):
-            emit("error", {"message": "Cannot rematch — opponent is disconnected."})
-            return
+    requested = sorted(room.get("rematch_requests", set()))
+    payload = {"requested": requested}
+    for p in room["players"]:
+        if p.get("sid"):
+            socketio.emit("rematch_status", payload, to=p["sid"])
+    for s in room["spectators"]:
+        if s.get("sid"):
+            socketio.emit("rematch_status", payload, to=s["sid"])
 
+
+def _start_rematch(room_id):
+    room = rooms.get(room_id)
+    if not room:
+        return
+    room["rematch_requests"] = set()
     fp = room["next_first_player"]
     room["next_first_player"] = 1 - fp
     room["first_player"] = fp
@@ -1136,6 +1142,54 @@ def handle_rematch():
     _broadcast_rooms_update()
     if room["mode"] == "ai" and room["game"].current_player == 1:
         _start_ai_task(room_id)
+
+
+@socketio.on("rematch")
+def handle_rematch():
+    sid = request.sid
+    room_id = sid_to_room.get(sid)
+    room = rooms.get(room_id)
+    if not room or not room["started"] or not room["game"]:
+        return
+    role, person = _find_role(room, sid)
+    if role != "player":
+        return
+    if not room["game"].game_over:
+        return
+
+    if room["mode"] == "ai":
+        _start_rematch(room_id)
+        return
+
+    other = _opponent(room, person)
+    if not other or not other.get("connected"):
+        emit("error", {"message": "Cannot rematch — opponent is disconnected."})
+        return
+
+    requests = room.setdefault("rematch_requests", set())
+    requests.add(person["player_id"])
+
+    connected_ids = {p["player_id"] for p in room["players"] if p.get("connected")}
+    if requests >= connected_ids and len(connected_ids) == 2:
+        _start_rematch(room_id)
+    else:
+        _broadcast_rematch_status(room_id)
+
+
+@socketio.on("rematch_cancel")
+def handle_rematch_cancel():
+    sid = request.sid
+    room_id = sid_to_room.get(sid)
+    room = rooms.get(room_id)
+    if not room:
+        return
+    role, person = _find_role(room, sid)
+    if role != "player":
+        return
+    requests = room.setdefault("rematch_requests", set())
+    if person["player_id"] in requests:
+        requests.discard(person["player_id"])
+        _broadcast_rematch_status(room_id)
 
 
 @socketio.on("claim_disconnect_win")
@@ -1198,6 +1252,10 @@ def handle_leave_room():
 
     if role == "player":
         person["connected"] = False
+        requests = room.get("rematch_requests")
+        if requests and person["player_id"] in requests:
+            requests.discard(person["player_id"])
+            _broadcast_rematch_status(room_id)
         # If game is in progress in PvP, forfeit; else just close the room.
         if (room["mode"] == "pvp" and room.get("game")
                 and not room["game"].game_over and room.get("started")):
@@ -1278,6 +1336,11 @@ def handle_disconnect():
         "grace_seconds": DISCONNECT_GRACE_SECONDS,
     }, to=room_id)
     _schedule_grace_task(room_id, person["player_id"])
+
+    requests = room.get("rematch_requests")
+    if requests and person["player_id"] in requests:
+        requests.discard(person["player_id"])
+        _broadcast_rematch_status(room_id)
 
     if (not any(p.get("connected") and p.get("sid") for p in room["players"])
             and not room["spectators"]):
