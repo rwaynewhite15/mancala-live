@@ -115,9 +115,79 @@ function goToMainMenu() {
     loadPvpRankings();
   }
 }
-function requestRematch() {
-  document.getElementById('game-over-overlay').classList.remove('show');
-  socket.emit('rematch');
+function onRematchButton() {
+  if (S.mode === 'ai') {
+    document.getElementById('game-over-overlay').classList.remove('show');
+    socket.emit('rematch');
+    return;
+  }
+  if (S.rematchRequested) {
+    socket.emit('rematch_cancel');
+  } else {
+    socket.emit('rematch');
+  }
+}
+
+function resetRematchUI() {
+  S.rematchRequested = false;
+  S.oppRematchRequested = false;
+  const btn = document.getElementById('rematch-btn');
+  if (btn) {
+    btn.textContent = 'Rematch';
+    btn.disabled = false;
+  }
+  const status = document.getElementById('rematch-status');
+  if (status) status.textContent = '';
+}
+
+function applyRematchStatus(requested) {
+  if (S.isSpectator) {
+    const status = document.getElementById('rematch-status');
+    if (!status) return;
+    if (!requested || requested.length === 0) {
+      status.textContent = '';
+    } else if (requested.length >= 2) {
+      status.textContent = 'Both players agreed — starting rematch…';
+    } else {
+      const myEl  = document.getElementById('my-name-text');
+      const oppEl = document.getElementById('opp-name-text');
+      const p0 = (myEl && (myEl.dataset.baseName || myEl.textContent)) || 'Player 1';
+      const p1 = (oppEl && (oppEl.dataset.baseName || oppEl.textContent)) || 'Player 2';
+      const who = requested[0] === 0 ? p0 : p1;
+      status.textContent = `${who} wants a rematch.`;
+    }
+    return;
+  }
+
+  const myId  = S.playerId;
+  const oppId = 1 - myId;
+  S.rematchRequested    = !!(requested && requested.indexOf(myId)  !== -1);
+  S.oppRematchRequested = !!(requested && requested.indexOf(oppId) !== -1);
+
+  const btn    = document.getElementById('rematch-btn');
+  const status = document.getElementById('rematch-status');
+
+  if (btn) {
+    if (S.rematchRequested) {
+      btn.textContent = 'Cancel Rematch';
+    } else if (S.oppRematchRequested) {
+      btn.textContent = 'Accept Rematch';
+    } else {
+      btn.textContent = 'Rematch';
+    }
+  }
+
+  if (status) {
+    if (S.rematchRequested && S.oppRematchRequested) {
+      status.textContent = 'Both players agreed — starting rematch…';
+    } else if (S.rematchRequested) {
+      status.textContent = `Waiting for ${S.oppName || 'opponent'} to accept…`;
+    } else if (S.oppRematchRequested) {
+      status.textContent = `${S.oppName || 'Opponent'} wants a rematch.`;
+    } else {
+      status.textContent = '';
+    }
+  }
 }
 
 function claimDisconnectWin() {
