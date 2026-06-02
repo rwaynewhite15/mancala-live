@@ -18,7 +18,7 @@
 
   --pit-size:  min(64px, calc((100vw - 148px) / 6.4));
   --store-w:   min(66px, calc((100vw - 148px) / 8));
-  --store-h:   calc(var(--pit-size) * 2.55);
+  --store-h:   calc(var(--pit-size) * 2 + var(--pit-gap));
   --pit-gap:   min(8px, calc((100vw - 148px) / 50));
   --pit-font:  calc(var(--pit-size) * 0.45);
   --store-font:calc(var(--pit-size) * 0.38);
@@ -163,30 +163,35 @@ select:focus { border-color: var(--gold); }
 #board {
   display: grid; grid-template-columns: var(--store-w) 1fr var(--store-w);
   gap: var(--pit-gap); align-items: center; margin: 6px 0;
-  padding: calc(var(--pit-gap) + 2px);
+  padding: calc(var(--pit-gap) + 9px) calc(var(--pit-gap) + 11px);
   border-radius: 20px;
-  border: 2px solid rgba(74,34,10,0.55);
+  border: 2px solid rgba(74,34,10,0.6);
   background:
     repeating-linear-gradient(82deg, rgba(90,40,8,0.10) 0 6px, rgba(255,230,185,0.10) 6px 13px),
-    linear-gradient(160deg, #e0a05c 0%, #c47a38 100%);
+    linear-gradient(158deg, #e8ac68 0%, #d2853f 48%, #b06a30 100%);
   box-shadow:
-    inset 0 4px 12px rgba(80,38,8,0.5),
-    inset 0 -2px 3px rgba(255,235,200,0.3),
-    0 1px 1px rgba(255,240,210,0.25);
+    inset 0 3px 2px rgba(255,242,218,0.6),
+    inset 0 -6px 12px rgba(70,32,6,0.55),
+    inset 5px 0 9px rgba(255,235,200,0.12),
+    inset -5px 0 11px rgba(70,32,6,0.4),
+    0 9px 20px rgba(0,0,0,0.5),
+    0 2px 5px rgba(0,0,0,0.4);
 }
 
 /* Carved well — shared depth treatment for pits and stores */
 .store {
   position: relative; overflow: hidden;
-  background: radial-gradient(ellipse at 50% 32%, #7a3c16 0%, #54260c 70%, #3a1908 100%);
+  background: radial-gradient(ellipse at 50% 38%, #1d0e04 0%, #311708 52%, #4a2410 100%);
   border-radius: 38px;
   width: var(--store-w); height: var(--store-h);
   display: flex; align-items: center; justify-content: center;
-  border: 2px solid rgba(0,0,0,0.45);
+  border: 2px solid rgba(18,8,2,0.6);
   box-shadow:
-    inset 0 7px 16px rgba(0,0,0,0.75),
-    inset 0 -3px 6px rgba(255,170,90,0.12),
-    0 1px 0 rgba(255,210,150,0.18);
+    inset 0 9px 18px rgba(0,0,0,0.85),
+    inset 0 -4px 9px rgba(0,0,0,0.55),
+    inset 0 2px 1px rgba(255,222,178,0.22),
+    0 1px 0 rgba(255,232,196,0.28),
+    0 -1px 2px rgba(60,28,6,0.5);
 }
 .store .stone-count {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
@@ -203,15 +208,17 @@ select:focus { border-color: var(--gold); }
   position: relative; overflow: hidden;
   width: var(--pit-size); height: var(--pit-size);
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 36%, #8a4319 0%, #5c2c10 68%, #3e1d09 100%);
-  border: 2px solid rgba(0,0,0,0.42);
+  background: radial-gradient(ellipse at 50% 40%, #1f0f05 0%, #321809 48%, #4d2611 100%);
+  border: 2px solid rgba(18,8,2,0.55);
   user-select: none;
   transition: transform .12s, box-shadow .15s, border-color .15s;
   flex-shrink: 0;
   box-shadow:
-    inset 0 6px 14px rgba(0,0,0,0.72),
-    inset 0 -3px 6px rgba(255,170,90,0.12),
-    0 1px 0 rgba(255,210,150,0.18);
+    inset 0 8px 15px rgba(0,0,0,0.85),
+    inset 0 -3px 8px rgba(0,0,0,0.5),
+    inset 0 2px 1px rgba(255,222,178,0.22),
+    0 1px 0 rgba(255,232,196,0.3),
+    0 -1px 2px rgba(60,28,6,0.5);
 }
 .pit .stone-count {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
@@ -229,9 +236,16 @@ select:focus { border-color: var(--gold); }
   position: absolute; transform: translate(-50%,-50%);
   border-radius: 50%;
   box-shadow:
-    inset -1px -2px 3px rgba(0,0,0,0.5),
-    inset 1px 2px 3px rgba(255,255,255,0.28),
-    0 2px 3px rgba(0,0,0,0.45);
+    inset -2px -3px 5px rgba(0,0,0,0.55),
+    inset 2px 3px 5px rgba(255,255,255,0.3),
+    0 3px 5px rgba(0,0,0,0.5);
+}
+/* Crisp glass specular highlight */
+.bead::after {
+  content: ""; position: absolute; top: 16%; left: 22%;
+  width: 36%; height: 36%; border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.95), rgba(255,255,255,0.25) 45%, rgba(255,255,255,0) 72%);
+  pointer-events: none;
 }
 .bead-drop { animation: beadDrop .34s cubic-bezier(.34,1.56,.64,1); }
 @keyframes beadDrop {
