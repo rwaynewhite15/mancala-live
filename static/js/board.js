@@ -90,9 +90,15 @@ let BEAD_MODEL   = null;   // Array(14): each entry is an ordered list of beads
 let beadIdSeq    = 0;
 
 // Beads take the colour of the well they're created in, so each pit starts
-// with a single uniform colour for its opening 4 beads (and adjacent pits
-// differ). Beads keep this colour as they later travel, so play mixes them.
-function wellColor(idx) { return idx % BEAD_COLORS.length; }
+// with a single uniform colour for its opening 4 beads. Colour is keyed to
+// the pit's position in its row, so each player's pit mirrors the opponent's
+// pit directly across from it (same colour per column). Beads keep this
+// colour as they later travel, so play mixes them.
+function wellColor(idx) {
+  if (idx >= 0  && idx <= 5)  return idx          % BEAD_COLORS.length;  // P1 pits, left→right
+  if (idx >= 7  && idx <= 12) return (12 - idx)   % BEAD_COLORS.length;  // P2 pits mirror P1
+  return idx % BEAD_COLORS.length;                                        // stores (empty at start)
+}
 
 function newBead(wellIdx) {
   return { id: ++beadIdSeq, ci: wellColor(wellIdx) };
