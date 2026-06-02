@@ -147,8 +147,8 @@ function paintBead(el, ci, seed, slot, shape) {
   const { fx, fy } = slotPos(seed, slot, shape);
   el.style.left   = (fx * 100) + '%';
   el.style.top    = (fy * 100) + '%';
-  el.style.width  = shape === 'capsule' ? 'var(--store-bead)' : 'var(--bead-size)';
-  el.style.height = el.style.width;
+  el.style.width  = 'var(--bead-size)';   // all beads identical, pits and stores
+  el.style.height = 'var(--bead-size)';
   el.style.background = beadGradient(ci);
 }
 
@@ -432,7 +432,8 @@ function wellPointPx(idx, slot) {
            y: cr.top  - lr.top  + cr.height * fy };
 }
 
-// Animate one bead (carrying its colour) from `from` to `to`, then resolve.
+// Animate one bead (carrying its colour) from `from` to `to` along a gentle
+// arc, then resolve. The mid keyframe is lifted upward so the bead lobs.
 function flyBead(ci, from, to) {
   return new Promise(resolve => {
     const layer = flyLayer || ensureFlyLayer();
@@ -442,14 +443,30 @@ function flyBead(ci, from, to) {
     el.style.background = beadGradient(ci);
     el.style.transform  = `translate(${from.x}px, ${from.y}px) translate(-50%, -50%)`;
     layer.appendChild(el);
-    // Two rAFs to guarantee the start transform is committed before we change it.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      el.style.transform = `translate(${to.x}px, ${to.y}px) translate(-50%, -50%)`;
-    }));
+
+    const dist = Math.hypot(to.x - from.x, to.y - from.y);
+    const lift = Math.min(70, dist * 0.26) + 16;      // higher arc for longer hops
+    const midX = (from.x + to.x) / 2;
+    const midY = (from.y + to.y) / 2 - lift;
+    const C = 'translate(-50%, -50%)';
+
     let done = false;
     const finish = () => { if (done) return; done = true; el.remove(); resolve(); };
-    el.addEventListener('transitionend', finish, { once: true });
-    setTimeout(finish, FLY_MS + 140);
+
+    if (typeof el.animate === 'function') {
+      const anim = el.animate([
+        { transform: `translate(${from.x}px, ${from.y}px) ${C}`, offset: 0 },
+        { transform: `translate(${midX}px, ${midY}px) ${C}`,     offset: 0.5 },
+        { transform: `translate(${to.x}px, ${to.y}px) ${C}`,     offset: 1 },
+      ], { duration: FLY_MS, easing: 'cubic-bezier(.45,.05,.55,.95)', fill: 'forwards' });
+      anim.onfinish = finish;
+    } else {
+      el.style.transition = `transform ${FLY_MS}ms ease-in-out`;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        el.style.transform = `translate(${to.x}px, ${to.y}px) ${C}`;
+      }));
+    }
+    setTimeout(finish, FLY_MS + 160);
   });
 }
 

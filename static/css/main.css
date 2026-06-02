@@ -23,10 +23,9 @@
   --pit-font:  calc(var(--pit-size) * 0.45);
   --store-font:calc(var(--pit-size) * 0.38);
   --bead-size: calc(var(--pit-size) * 0.30);
-  --store-bead:calc(var(--store-w)  * 0.42);
-  --wood-1:    #d2742a;
-  --wood-2:    #b6400f;
-  --wood-3:    #8a320c;
+  --felt-1:    #0c7373;
+  --felt-2:    #075050;
+  --felt-3:    #04393a;
 }
 
 body {
@@ -145,14 +144,14 @@ select:focus { border-color: var(--gold); }
 #board-wrapper {
   position: relative;
   background:
-    repeating-linear-gradient(96deg, rgba(0,0,0,0.05) 0 7px, rgba(255,228,180,0.05) 7px 15px),
-    linear-gradient(158deg, var(--wood-1) 0%, var(--wood-2) 52%, var(--wood-3) 100%);
+    repeating-linear-gradient(96deg, rgba(0,0,0,0.05) 0 7px, rgba(190,255,255,0.045) 7px 15px),
+    linear-gradient(158deg, var(--felt-1) 0%, var(--felt-2) 52%, var(--felt-3) 100%);
   border-radius: 24px; padding: 14px 12px;
   box-shadow:
-    0 14px 44px rgba(120,40,8,0.5),
+    0 14px 44px rgba(4,40,40,0.55),
     0 2px 8px rgba(0,0,0,0.6),
-    inset 0 2px 2px rgba(255,228,180,0.35),
-    inset 0 -4px 10px rgba(60,20,4,0.55);
+    inset 0 2px 2px rgba(170,245,245,0.3),
+    inset 0 -4px 10px rgba(2,22,22,0.6);
   margin-bottom: 12px;
   border: 1.5px solid rgba(254,205,26,0.2);
 }
@@ -169,26 +168,26 @@ select:focus { border-color: var(--gold); }
   padding: calc(var(--pit-gap) + 2px);
   border-radius: 20px;
   background:
-    repeating-linear-gradient(82deg, rgba(0,0,0,0.06) 0 6px, rgba(255,210,150,0.04) 6px 13px),
-    linear-gradient(160deg, #a8531c 0%, #8a3a10 100%);
+    repeating-linear-gradient(82deg, rgba(0,0,0,0.06) 0 6px, rgba(190,255,255,0.035) 6px 13px),
+    linear-gradient(160deg, #075454 0%, #043636 100%);
   box-shadow:
-    inset 0 4px 12px rgba(40,14,2,0.6),
-    inset 0 -2px 3px rgba(255,210,150,0.18),
-    0 1px 1px rgba(255,228,180,0.18);
+    inset 0 4px 12px rgba(2,20,20,0.62),
+    inset 0 -2px 3px rgba(170,245,245,0.16),
+    0 1px 1px rgba(170,245,245,0.16);
 }
 
 /* Carved well — shared depth treatment for pits and stores */
 .store {
   position: relative; overflow: hidden;
-  background: radial-gradient(ellipse at 50% 32%, #4a1c05 0%, #340f02 70%, #220a01 100%);
+  background: radial-gradient(ellipse at 50% 32%, #073d3d 0%, #042929 70%, #021c1c 100%);
   border-radius: 38px;
   width: var(--store-w); height: var(--store-h);
   display: flex; align-items: center; justify-content: center;
   border: 2px solid rgba(0,0,0,0.45);
   box-shadow:
     inset 0 7px 16px rgba(0,0,0,0.75),
-    inset 0 -3px 6px rgba(255,170,90,0.12),
-    0 1px 0 rgba(255,210,150,0.18);
+    inset 0 -3px 6px rgba(120,235,235,0.12),
+    0 1px 0 rgba(170,245,245,0.18);
 }
 .store .stone-count {
   position: absolute; left: 50%; top: 8px; transform: translateX(-50%);
@@ -205,15 +204,15 @@ select:focus { border-color: var(--gold); }
   position: relative; overflow: hidden;
   width: var(--pit-size); height: var(--pit-size);
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 36%, #5a2206 0%, #3c1503 68%, #270e02 100%);
+  background: radial-gradient(circle at 50% 36%, #084747 0%, #053232 68%, #03201f 100%);
   border: 2px solid rgba(0,0,0,0.42);
   user-select: none;
   transition: transform .12s, box-shadow .15s, border-color .15s;
   flex-shrink: 0;
   box-shadow:
     inset 0 6px 14px rgba(0,0,0,0.72),
-    inset 0 -3px 6px rgba(255,170,90,0.12),
-    0 1px 0 rgba(255,210,150,0.18);
+    inset 0 -3px 6px rgba(120,235,235,0.12),
+    0 1px 0 rgba(170,245,245,0.18);
 }
 .pit .stone-count {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
@@ -252,14 +251,13 @@ select:focus { border-color: var(--gold); }
     inset -1px -2px 3px rgba(0,0,0,0.5),
     inset 1px 2px 3px rgba(255,255,255,0.28),
     0 4px 8px rgba(0,0,0,0.55);
-  transition: transform .23s cubic-bezier(.4,.08,.45,1);
   will-change: transform;
 }
 .store-pulse {
   border-color: var(--gold) !important;
   box-shadow:
     inset 0 7px 16px rgba(0,0,0,0.7),
-    inset 0 -3px 6px rgba(255,170,90,0.12),
+    inset 0 -3px 6px rgba(120,235,235,0.12),
     0 0 18px rgba(254,205,26,0.7) !important;
 }
 
@@ -267,7 +265,7 @@ select:focus { border-color: var(--gold); }
 .pit.my-pit:hover:not(.disabled) { transform: scale(1.06); box-shadow: inset 0 6px 14px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.4); }
 .pit.valid { border-color: var(--gold); box-shadow: inset 0 6px 14px rgba(0,0,0,0.6), 0 0 14px rgba(254,205,26,0.6); }
 .pit.valid:hover { transform: scale(1.1); box-shadow: inset 0 5px 12px rgba(0,0,0,0.5), 0 0 24px rgba(254,205,26,0.8); }
-.pit.empty { box-shadow: inset 0 7px 16px rgba(0,0,0,0.8), inset 0 -2px 5px rgba(255,170,90,0.08); }
+.pit.empty { box-shadow: inset 0 7px 16px rgba(0,0,0,0.8), inset 0 -2px 5px rgba(120,235,235,0.08); }
 .pit.empty .stone-count { opacity: .5; }
 .pit.disabled { cursor: default; }
 .pit.last-moved { border-color: rgba(255,249,238,0.5); }
@@ -359,7 +357,7 @@ select:focus { border-color: var(--gold); }
   border-radius: 6px;
 }
 .pit.spectator-locked { cursor: default !important; }
-.pit.spectator-locked:hover { transform: none !important; box-shadow: inset 0 6px 14px rgba(0,0,0,0.72), inset 0 -3px 6px rgba(255,170,90,0.12) !important; }
+.pit.spectator-locked:hover { transform: none !important; box-shadow: inset 0 6px 14px rgba(0,0,0,0.72), inset 0 -3px 6px rgba(120,235,235,0.12) !important; }
 .chat-msg.spec { color: #a9d4ff; }
 .chat-msg .chat-tag {
   display: inline-block;
