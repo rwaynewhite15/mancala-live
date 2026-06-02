@@ -36,15 +36,73 @@ function buildBoard() {
   for (let i = 1; i <= 6; i++) {
     const op = document.createElement('div');
     op.className = 'pit'; op.id = `opp-pit-${i}`;
-    op.innerHTML = `<span class="stone-count">0</span>`;
+    op.innerHTML = `<div class="beads"></div><span class="stone-count">0</span>`;
     document.getElementById('opp-pits').appendChild(op);
 
     const mp = document.createElement('div');
     mp.className = 'pit my-pit'; mp.id = `my-pit-${i}`;
     mp.dataset.label = i;
-    mp.innerHTML = `<span class="stone-count">0</span>`;
+    mp.innerHTML = `<div class="beads"></div><span class="stone-count">0</span>`;
     mp.addEventListener('click', () => onPitClick(i));
     document.getElementById('my-pits').appendChild(mp);
+  }
+}
+
+// ── 3D bead rendering ──────────────────────────────────────────────────────
+// Glossy glass-bead palette: [highlight, base, shadow]
+const BEAD_COLORS = [
+  ['#ff9a9a', '#d62828', '#7a1414'],  // ruby
+  ['#ffe29a', '#f0a202', '#915c00'],  // amber
+  ['#9af0bd', '#1f9e57', '#0c4d2a'],  // emerald
+  ['#9ec2ff', '#2f6fe0', '#16356e'],  // sapphire
+  ['#dcb0ff', '#8b3fd6', '#481d70'],  // amethyst
+  ['#86eded', '#0ba5a5', '#044a4a'],  // teal
+  ['#fff6e6', '#efe2c4', '#b9a877'],  // ivory
+  ['#ffc2a3', '#ff6b35', '#8a3010'],  // coral
+];
+
+// Stable, deterministic 0..1 hash so a given bead keeps its spot/colour
+// across the many re-renders that happen during move animation.
+function beadHash(key) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  h ^= h >>> 15; h = Math.imul(h, 2246822507); h ^= h >>> 13;
+  return (h >>> 0) / 4294967295;
+}
+
+function styleBead(bead, seedKey, i, shape) {
+  const col   = BEAD_COLORS[Math.floor(beadHash(`${seedKey}|c|${i}`) * BEAD_COLORS.length) % BEAD_COLORS.length];
+  const angle = beadHash(`${seedKey}|a|${i}`) * Math.PI * 2;
+  const rad   = Math.sqrt(beadHash(`${seedKey}|r|${i}`));   // uniform over disk
+  const jit   = 0.82 + beadHash(`${seedKey}|s|${i}`) * 0.42;
+
+  let xR, yR, base;
+  if (shape === 'capsule') { xR = 24; yR = 40; base = 'var(--store-bead)'; }
+  else                     { xR = 30; yR = 30; base = 'var(--bead-size)'; }
+
+  bead.style.left   = (50 + Math.cos(angle) * rad * xR) + '%';
+  bead.style.top    = (50 + Math.sin(angle) * rad * yR) + '%';
+  bead.style.width  = `calc(${base} * ${jit.toFixed(3)})`;
+  bead.style.height = bead.style.width;
+  bead.style.background = `radial-gradient(circle at 32% 28%, ${col[0]}, ${col[1]} 58%, ${col[2]} 100%)`;
+}
+
+// Diff-based render: add/remove bead elements to match the count so existing
+// beads keep position (stable) and freshly added ones animate in.
+function renderBeads(container, count, seedKey, shape) {
+  if (!container) return;
+  const max  = shape === 'capsule' ? 48 : 24;
+  const want = Math.max(0, Math.min(count, max));
+  const kids = container.children;
+  for (let i = kids.length - 1; i >= want; i--) container.removeChild(kids[i]);
+  for (let i = kids.length; i < want; i++) {
+    const b = document.createElement('div');
+    b.className = 'bead bead-drop';
+    styleBead(b, seedKey, i, shape);
+    container.appendChild(b);
   }
 }
 
@@ -56,6 +114,7 @@ function applyBoard(board, validSet, lastPit) {
   myPits.forEach((bi, i) => {
     const el = document.getElementById(`my-pit-${i+1}`);
     el.querySelector('.stone-count').textContent = board[bi];
+    renderBeads(el.querySelector('.beads'), board[bi], `my-pit-${i+1}`, 'circle');
     el.className = 'pit my-pit';
     if (board[bi] === 0) el.classList.add('empty');
     if (validSet && validSet.has(bi)) el.classList.add('valid');
@@ -66,6 +125,7 @@ function applyBoard(board, validSet, lastPit) {
   oppPits.forEach((bi, i) => {
     const el = document.getElementById(`opp-pit-${i+1}`);
     el.querySelector('.stone-count').textContent = board[bi];
+    renderBeads(el.querySelector('.beads'), board[bi], `opp-pit-${i+1}`, 'circle');
     el.className = 'pit';
     if (board[bi] === 0) el.classList.add('empty');
     if (bi === lastPit) el.classList.add('last-moved');
@@ -73,6 +133,8 @@ function applyBoard(board, validSet, lastPit) {
 
   document.getElementById('my-store-count').textContent  = board[myStoreIdx()];
   document.getElementById('opp-store-count').textContent = board[oppStoreIdx()];
+  renderBeads(document.getElementById('my-store-beads'),  board[myStoreIdx()],  'my-store',  'capsule');
+  renderBeads(document.getElementById('opp-store-beads'), board[oppStoreIdx()], 'opp-store', 'capsule');
   document.getElementById('my-score').textContent        = board[myStoreIdx()];
   document.getElementById('opp-score').textContent       = board[oppStoreIdx()];
 }
