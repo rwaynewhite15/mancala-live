@@ -16,10 +16,10 @@
   --danger:  #e03820;
   --radius:  14px;
 
-  --pit-size:  min(64px, calc((100vw - 148px) / 6.4));
-  --store-w:   min(66px, calc((100vw - 148px) / 8));
+  --pit-size:  min(64px, calc((100vw - 104px) / 8.6));
+  --store-w:   min(62px, calc(var(--pit-size) * 0.9));
   --store-h:   calc(var(--pit-size) * 2 + var(--pit-gap));
-  --pit-gap:   min(8px, calc((100vw - 148px) / 50));
+  --pit-gap:   min(7px, calc((100vw - 60px) / 70));
   --pit-font:  calc(var(--pit-size) * 0.45);
   --store-font:calc(var(--pit-size) * 0.38);
   --bead-size: calc(var(--pit-size) * 0.32);
@@ -163,12 +163,20 @@ select:focus { border-color: var(--gold); }
 #board {
   display: grid; grid-template-columns: var(--store-w) 1fr var(--store-w);
   gap: var(--pit-gap); align-items: center; margin: 6px 0;
-  padding: calc(var(--pit-gap) + 9px) calc(var(--pit-gap) + 11px);
+  padding: calc(var(--pit-gap) + 9px) calc(var(--pit-gap) + 6px);
   border-radius: 20px;
   border: 2px solid rgba(74,34,10,0.6);
+  /* Layered, irregular wood grain: several fine fibre passes at slightly
+     different angles/periods interfere so it reads as natural grain rather
+     than uniform stripes, plus a soft sheen and broad plank shading. */
   background:
-    repeating-linear-gradient(82deg, rgba(90,40,8,0.10) 0 6px, rgba(255,230,185,0.10) 6px 13px),
-    linear-gradient(158deg, #e8ac68 0%, #d2853f 48%, #b06a30 100%);
+    radial-gradient(140% 80% at 18% 22%, rgba(255,224,178,0.16), rgba(255,224,178,0) 55%),
+    radial-gradient(120% 70% at 82% 88%, rgba(70,32,8,0.20), rgba(70,32,8,0) 60%),
+    repeating-linear-gradient(2.2deg, rgba(74,34,8,0.11) 0 1px, rgba(74,34,8,0) 1px 5px),
+    repeating-linear-gradient(178.5deg, rgba(255,228,182,0.07) 0 1px, rgba(255,228,182,0) 1px 8px),
+    repeating-linear-gradient(1deg, rgba(48,20,4,0.09) 0 2px, rgba(48,20,4,0) 2px 13px),
+    repeating-linear-gradient(3.5deg, rgba(255,210,150,0.05) 0 1px, rgba(255,210,150,0) 1px 21px),
+    linear-gradient(168deg, #e6aa66 0%, #d5883f 50%, #bd7330 100%);
   box-shadow:
     inset 0 3px 2px rgba(255,242,218,0.6),
     inset 0 -6px 12px rgba(70,32,6,0.55),
