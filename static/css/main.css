@@ -22,7 +22,7 @@
   --pit-gap:   min(8px, calc((100vw - 148px) / 50));
   --pit-font:  calc(var(--pit-size) * 0.45);
   --store-font:calc(var(--pit-size) * 0.38);
-  --bead-size: calc(var(--pit-size) * 0.30);
+  --bead-size: calc(var(--pit-size) * 0.32);
   --wood-1:    #d2742a;
   --wood-2:    #b6400f;
   --wood-3:    #8a320c;
@@ -165,19 +165,20 @@ select:focus { border-color: var(--gold); }
   gap: var(--pit-gap); align-items: center; margin: 6px 0;
   padding: calc(var(--pit-gap) + 2px);
   border-radius: 20px;
+  border: 2px solid rgba(74,34,10,0.55);
   background:
-    repeating-linear-gradient(82deg, rgba(0,0,0,0.06) 0 6px, rgba(255,210,150,0.04) 6px 13px),
-    linear-gradient(160deg, #a8531c 0%, #8a3a10 100%);
+    repeating-linear-gradient(82deg, rgba(90,40,8,0.10) 0 6px, rgba(255,230,185,0.10) 6px 13px),
+    linear-gradient(160deg, #e0a05c 0%, #c47a38 100%);
   box-shadow:
-    inset 0 4px 12px rgba(40,14,2,0.6),
-    inset 0 -2px 3px rgba(255,210,150,0.18),
-    0 1px 1px rgba(255,228,180,0.18);
+    inset 0 4px 12px rgba(80,38,8,0.5),
+    inset 0 -2px 3px rgba(255,235,200,0.3),
+    0 1px 1px rgba(255,240,210,0.25);
 }
 
 /* Carved well — shared depth treatment for pits and stores */
 .store {
   position: relative; overflow: hidden;
-  background: radial-gradient(ellipse at 50% 32%, #4a1c05 0%, #340f02 70%, #220a01 100%);
+  background: radial-gradient(ellipse at 50% 32%, #7a3c16 0%, #54260c 70%, #3a1908 100%);
   border-radius: 38px;
   width: var(--store-w); height: var(--store-h);
   display: flex; align-items: center; justify-content: center;
@@ -189,10 +190,10 @@ select:focus { border-color: var(--gold); }
 }
 .store .stone-count {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
-  z-index: 3; font-size: var(--store-font); font-weight: 800; color: var(--gold);
-  background: rgba(3,18,18,0.66); padding: 2px 8px; border-radius: 11px;
-  border: 1px solid rgba(254,205,26,0.4);
-  text-shadow: 0 0 8px rgba(254,205,26,0.55); pointer-events: none;
+  z-index: 3; font-size: calc(var(--store-font) * 0.84); font-weight: 800; color: var(--gold);
+  background: rgba(3,18,18,0.5); padding: 1px 7px; border-radius: 10px;
+  border: 1px solid rgba(254,205,26,0.36);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 8px rgba(254,205,26,0.45); pointer-events: none;
 }
 
 #pits-area { display: flex; flex-direction: column; gap: var(--pit-gap); }
@@ -202,7 +203,7 @@ select:focus { border-color: var(--gold); }
   position: relative; overflow: hidden;
   width: var(--pit-size); height: var(--pit-size);
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 36%, #5a2206 0%, #3c1503 68%, #270e02 100%);
+  background: radial-gradient(circle at 50% 36%, #8a4319 0%, #5c2c10 68%, #3e1d09 100%);
   border: 2px solid rgba(0,0,0,0.42);
   user-select: none;
   transition: transform .12s, box-shadow .15s, border-color .15s;
@@ -214,12 +215,12 @@ select:focus { border-color: var(--gold); }
 }
 .pit .stone-count {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
-  z-index: 3; font-size: calc(var(--pit-font) * 0.74); font-weight: 800; line-height: 1;
-  color: var(--cream);
-  background: rgba(3,18,18,0.6); padding: 1px 6px; border-radius: 9px;
-  border: 1px solid rgba(254,205,26,0.32);
-  min-width: 1.5em; text-align: center;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.85); pointer-events: none;
+  z-index: 3; font-size: calc(var(--pit-font) * 0.6); font-weight: 800; line-height: 1;
+  color: var(--gold);
+  background: rgba(3,18,18,0.5); padding: 1px 5px; border-radius: 8px;
+  border: 1px solid rgba(254,205,26,0.3);
+  min-width: 1.3em; text-align: center;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.95); pointer-events: none;
 }
 
 /* Beads */
