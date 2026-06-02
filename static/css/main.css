@@ -16,12 +16,16 @@
   --danger:  #e03820;
   --radius:  14px;
 
-  --pit-size:  min(62px, calc((100vw - 148px) / 6.4));
-  --store-w:   min(64px, calc((100vw - 148px) / 8));
-  --store-h:   calc(var(--pit-size) * 2.35);
+  --pit-size:  min(64px, calc((100vw - 148px) / 6.4));
+  --store-w:   min(66px, calc((100vw - 148px) / 8));
+  --store-h:   calc(var(--pit-size) * 2.55);
   --pit-gap:   min(8px, calc((100vw - 148px) / 50));
   --pit-font:  calc(var(--pit-size) * 0.45);
   --store-font:calc(var(--pit-size) * 0.38);
+  --bead-size: calc(var(--pit-size) * 0.30);
+  --wood-1:    #d2742a;
+  --wood-2:    #b6400f;
+  --wood-3:    #8a320c;
 }
 
 body {
@@ -138,11 +142,16 @@ select:focus { border-color: var(--gold); }
 }
 
 #board-wrapper {
-  background: linear-gradient(150deg, var(--orange) 0%, var(--rust) 100%);
-  border-radius: 22px; padding: 14px 12px;
-  box-shadow: 0 10px 40px rgba(182,64,15,0.4), 0 2px 8px rgba(0,0,0,0.6);
+  position: relative;
+  background: linear-gradient(158deg, #0c7373 0%, #075050 55%, #04393a 100%);
+  border-radius: 24px; padding: 14px 12px;
+  box-shadow:
+    0 14px 44px rgba(4,40,40,0.55),
+    0 2px 8px rgba(0,0,0,0.6),
+    inset 0 2px 2px rgba(170,245,245,0.28),
+    inset 0 -4px 10px rgba(2,22,22,0.55);
   margin-bottom: 12px;
-  border: 1.5px solid rgba(254,205,26,0.18);
+  border: 1.5px solid rgba(254,205,26,0.2);
 }
 
 .player-bar { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; font-size: .88rem; }
@@ -151,52 +160,123 @@ select:focus { border-color: var(--gold); }
 .player-bar.active-player .name { color: var(--gold); }
 .record { font-size: .73rem; color: rgba(255,249,238,0.55); font-weight: 400; margin-left: 5px; }
 
-#board { display: grid; grid-template-columns: var(--store-w) 1fr var(--store-w); gap: var(--pit-gap); align-items: center; margin: 6px 0; }
-
-.store {
-  background: rgba(0,0,0,0.32);
-  border-radius: 40px;
-  width: var(--store-w); height: var(--store-h);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  border: 2px solid rgba(254,205,26,0.2);
-  box-shadow: inset 0 3px 10px rgba(0,0,0,0.4);
+#board {
+  display: grid; grid-template-columns: var(--store-w) 1fr var(--store-w);
+  gap: var(--pit-gap); align-items: center; margin: 6px 0;
+  padding: calc(var(--pit-gap) + 2px);
+  border-radius: 20px;
+  background:
+    repeating-linear-gradient(82deg, rgba(0,0,0,0.06) 0 6px, rgba(255,210,150,0.04) 6px 13px),
+    linear-gradient(160deg, #a8531c 0%, #8a3a10 100%);
+  box-shadow:
+    inset 0 4px 12px rgba(40,14,2,0.6),
+    inset 0 -2px 3px rgba(255,210,150,0.18),
+    0 1px 1px rgba(255,228,180,0.18);
 }
-.store .stone-count { font-size: var(--store-font); font-weight: 800; color: var(--gold); text-shadow: 0 0 10px rgba(254,205,26,0.6); }
+
+/* Carved well — shared depth treatment for pits and stores */
+.store {
+  position: relative; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 32%, #4a1c05 0%, #340f02 70%, #220a01 100%);
+  border-radius: 38px;
+  width: var(--store-w); height: var(--store-h);
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid rgba(0,0,0,0.45);
+  box-shadow:
+    inset 0 7px 16px rgba(0,0,0,0.75),
+    inset 0 -3px 6px rgba(255,170,90,0.12),
+    0 1px 0 rgba(255,210,150,0.18);
+}
+.store .stone-count {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+  z-index: 3; font-size: var(--store-font); font-weight: 800; color: var(--gold);
+  background: rgba(3,18,18,0.66); padding: 2px 8px; border-radius: 11px;
+  border: 1px solid rgba(254,205,26,0.4);
+  text-shadow: 0 0 8px rgba(254,205,26,0.55); pointer-events: none;
+}
 
 #pits-area { display: flex; flex-direction: column; gap: var(--pit-gap); }
 .pit-row { display: flex; gap: var(--pit-gap); justify-content: center; }
 
 .pit {
+  position: relative; overflow: hidden;
   width: var(--pit-size); height: var(--pit-size);
   border-radius: 50%;
-  background: radial-gradient(circle at 38% 35%, var(--pit-h), var(--pit));
-  border: 2px solid rgba(0,0,0,0.35);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  background: radial-gradient(circle at 50% 36%, #5a2206 0%, #3c1503 68%, #270e02 100%);
+  border: 2px solid rgba(0,0,0,0.42);
   user-select: none;
   transition: transform .12s, box-shadow .15s, border-color .15s;
   flex-shrink: 0;
-  box-shadow: inset 0 3px 8px rgba(0,0,0,0.45), 0 2px 4px rgba(0,0,0,0.3);
+  box-shadow:
+    inset 0 6px 14px rgba(0,0,0,0.72),
+    inset 0 -3px 6px rgba(255,170,90,0.12),
+    0 1px 0 rgba(255,210,150,0.18);
 }
-.pit .stone-count { font-size: var(--pit-font); font-weight: 800; line-height: 1; color: var(--cream); }
+.pit .stone-count {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+  z-index: 3; font-size: calc(var(--pit-font) * 0.74); font-weight: 800; line-height: 1;
+  color: var(--cream);
+  background: rgba(3,18,18,0.6); padding: 1px 6px; border-radius: 9px;
+  border: 1px solid rgba(254,205,26,0.32);
+  min-width: 1.5em; text-align: center;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.85); pointer-events: none;
+}
+
+/* Beads */
+.beads { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.bead {
+  position: absolute; transform: translate(-50%,-50%);
+  border-radius: 50%;
+  box-shadow:
+    inset -1px -2px 3px rgba(0,0,0,0.5),
+    inset 1px 2px 3px rgba(255,255,255,0.28),
+    0 2px 3px rgba(0,0,0,0.45);
+}
+.bead-drop { animation: beadDrop .34s cubic-bezier(.34,1.56,.64,1); }
+@keyframes beadDrop {
+  0%   { transform: translate(-50%,-50%) scale(0);    opacity: 0; }
+  70%  { transform: translate(-50%,-50%) scale(1.18); }
+  100% { transform: translate(-50%,-50%) scale(1);    opacity: 1; }
+}
+
+/* Overlay where beads physically travel between wells during a move */
+#bead-fly-layer { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 6; }
+.bead-fly {
+  position: absolute; left: 0; top: 0;
+  width: var(--bead-size); height: var(--bead-size);
+  border-radius: 50%;
+  box-shadow:
+    inset -1px -2px 3px rgba(0,0,0,0.5),
+    inset 1px 2px 3px rgba(255,255,255,0.28),
+    0 4px 8px rgba(0,0,0,0.55);
+  will-change: transform;
+}
+.store-pulse {
+  border-color: var(--gold) !important;
+  box-shadow:
+    inset 0 7px 16px rgba(0,0,0,0.7),
+    inset 0 -3px 6px rgba(255,170,90,0.12),
+    0 0 18px rgba(254,205,26,0.7) !important;
+}
 
 .pit.my-pit { cursor: pointer; }
-.pit.my-pit:hover:not(.disabled) { transform: scale(1.06); box-shadow: inset 0 3px 8px rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.35); }
-.pit.valid { border-color: var(--gold); box-shadow: inset 0 3px 8px rgba(0,0,0,0.35), 0 0 12px rgba(254,205,26,0.55); }
-.pit.valid:hover { transform: scale(1.1); box-shadow: inset 0 3px 8px rgba(0,0,0,0.25), 0 0 22px rgba(254,205,26,0.75); }
-.pit.empty { opacity: .38; }
+.pit.my-pit:hover:not(.disabled) { transform: scale(1.06); box-shadow: inset 0 6px 14px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.4); }
+.pit.valid { border-color: var(--gold); box-shadow: inset 0 6px 14px rgba(0,0,0,0.6), 0 0 14px rgba(254,205,26,0.6); }
+.pit.valid:hover { transform: scale(1.1); box-shadow: inset 0 5px 12px rgba(0,0,0,0.5), 0 0 24px rgba(254,205,26,0.8); }
+.pit.empty { box-shadow: inset 0 7px 16px rgba(0,0,0,0.8), inset 0 -2px 5px rgba(255,170,90,0.08); }
+.pit.empty .stone-count { opacity: .5; }
 .pit.disabled { cursor: default; }
-.pit.last-moved { border-color: rgba(255,249,238,0.45); }
+.pit.last-moved { border-color: rgba(255,249,238,0.5); }
 
 .pit.landing {
   border-color: var(--gold);
-  box-shadow: inset 0 3px 8px rgba(0,0,0,0.25), 0 0 22px rgba(254,205,26,0.8);
+  box-shadow: inset 0 5px 12px rgba(0,0,0,0.5), 0 0 24px rgba(254,205,26,0.85);
   transform: scale(1.13);
 }
 .pit.capture-flash {
   border-color: var(--danger);
-  box-shadow: inset 0 3px 8px rgba(0,0,0,0.25), 0 0 22px rgba(224,56,32,0.8);
+  box-shadow: inset 0 5px 12px rgba(0,0,0,0.5), 0 0 24px rgba(224,56,32,0.85);
   transform: scale(1.1);
-  background: radial-gradient(circle at 38% 35%, #8a2510, #5a1508);
 }
 
 #status-bar {
@@ -275,7 +355,7 @@ select:focus { border-color: var(--gold); }
   border-radius: 6px;
 }
 .pit.spectator-locked { cursor: default !important; }
-.pit.spectator-locked:hover { transform: none !important; box-shadow: inset 0 3px 8px rgba(0,0,0,0.45), 0 2px 4px rgba(0,0,0,0.3) !important; }
+.pit.spectator-locked:hover { transform: none !important; box-shadow: inset 0 6px 14px rgba(0,0,0,0.72), inset 0 -3px 6px rgba(255,170,90,0.12) !important; }
 .chat-msg.spec { color: #a9d4ff; }
 .chat-msg .chat-tag {
   display: inline-block;
