@@ -27,11 +27,15 @@ function cancelAnimations() {
   animationVersion++;
   isAnimating = false;
   animQueue = [];
+  const fl = document.getElementById('bead-fly-layer');
+  if (fl) fl.innerHTML = '';
 }
 
 // ── Board setup ────────────────────────────────────────────────────────────
 function buildBoard() {
   ['opp-pits','my-pits'].forEach(id => document.getElementById(id).innerHTML = '');
+  resetBeadModel();
+  ensureFlyLayer();
 
   for (let i = 1; i <= 6; i++) {
     const op = document.createElement('div');
@@ -73,41 +77,102 @@ function beadHash(key) {
   return (h >>> 0) / 4294967295;
 }
 
-function styleBead(bead, seedKey, i, shape) {
-  // Colour by position: a per-well offset then cycle the palette, so every
-  // well shows a balanced, deterministic spread that stays consistent as
-  // stones are sown from pit to pit.
-  const offset = Math.floor(beadHash(`${seedKey}|c`) * BEAD_COLORS.length);
-  const col    = BEAD_COLORS[(offset + i) % BEAD_COLORS.length];
-  const angle  = beadHash(`${seedKey}|a|${i}`) * Math.PI * 2;
-  const rad    = Math.sqrt(beadHash(`${seedKey}|r|${i}`));   // uniform over disk
-
-  let xR, yR, base;
-  if (shape === 'capsule') { xR = 24; yR = 40; base = 'var(--store-bead)'; }
-  else                     { xR = 30; yR = 30; base = 'var(--bead-size)'; }
-
-  bead.style.left   = (50 + Math.cos(angle) * rad * xR) + '%';
-  bead.style.top    = (50 + Math.sin(angle) * rad * yR) + '%';
-  bead.style.width  = base;          // all beads the same size
-  bead.style.height = base;
-  bead.style.background = `radial-gradient(circle at 32% 28%, ${col[0]}, ${col[1]} 58%, ${col[2]} 100%)`;
+function beadGradient(ci) {
+  const col = BEAD_COLORS[ci % BEAD_COLORS.length];
+  return `radial-gradient(circle at 32% 28%, ${col[0]}, ${col[1]} 58%, ${col[2]} 100%)`;
 }
 
-// Diff-based render: add/remove bead elements to match the count so existing
-// beads keep position (stable) and freshly added ones animate in.
-function renderBeads(container, count, seedKey, shape) {
-  if (!container) return;
-  const max  = shape === 'capsule' ? 48 : 24;
-  const want = Math.max(0, Math.min(count, max));
-  const kids = container.children;
-  for (let i = kids.length - 1; i >= want; i--) container.removeChild(kids[i]);
-  for (let i = kids.length; i < want; i++) {
-    const b = document.createElement('div');
-    b.className = 'bead bead-drop';
-    styleBead(b, seedKey, i, shape);
-    container.appendChild(b);
+// ── Bead identity model ─────────────────────────────────────────────────────
+// Each bead is a persistent entity { id, ci } (ci = palette colour index).
+// The model is kept in absolute board coords [0..13]; a bead keeps its id and
+// colour as it travels between wells, so identity is preserved across moves.
+let BEAD_MODEL   = null;   // Array(14): each entry is an ordered list of beads
+let beadIdSeq    = 0;
+let beadColorSeq = 0;
+
+function newBead() {
+  return { id: ++beadIdSeq, ci: (beadColorSeq++) % BEAD_COLORS.length };
+}
+
+// Build/repair the model so each well holds exactly board[idx] beads. A no-op
+// when already in sync; otherwise tops up / trims from the tail. This keeps
+// identities intact for ordinary renders and is the safety net after an
+// animation (e.g. end-of-game sweeps the animation doesn't replay).
+function reconcileModel(board) {
+  if (!BEAD_MODEL) BEAD_MODEL = Array.from({ length: 14 }, () => []);
+  for (let idx = 0; idx < 14; idx++) {
+    const arr = BEAD_MODEL[idx];
+    while (arr.length > board[idx]) arr.pop();
+    while (arr.length < board[idx]) arr.push(newBead());
   }
 }
+
+function resetBeadModel() {
+  BEAD_MODEL = null;
+  ['my-store-beads', 'opp-store-beads'].forEach(id => {
+    const e = document.getElementById(id);
+    if (e) e.innerHTML = '';
+  });
+  const fl = document.getElementById('bead-fly-layer');
+  if (fl) fl.innerHTML = '';
+}
+
+// ── Well → DOM mapping (model is absolute; the DOM is viewer-oriented) ───────
+function wellShape(idx) { return (idx === P1_STORE || idx === P2_STORE) ? 'capsule' : 'circle'; }
+function wellSeed(idx)  {
+  if (idx === P1_STORE) return 'store-p1';
+  if (idx === P2_STORE) return 'store-p2';
+  return 'pit-' + idx;
+}
+function wellContainer(idx) {
+  if (idx === myStoreIdx())  return document.getElementById('my-store-beads');
+  if (idx === oppStoreIdx()) return document.getElementById('opp-store-beads');
+  const el = pitEl(idx);
+  return el ? el.querySelector('.beads') : null;
+}
+
+// Deterministic slot position (uniform over the well's disk/ellipse), as a
+// fraction 0..1 of the container, so a bead in slot N always sits in the same
+// spot whether it's painted in place or flown to.
+function slotPos(seed, slot, shape) {
+  const angle = beadHash(`${seed}|a|${slot}`) * Math.PI * 2;
+  const rad   = Math.sqrt(beadHash(`${seed}|r|${slot}`));
+  const xR = shape === 'capsule' ? 24 : 30;
+  const yR = shape === 'capsule' ? 40 : 30;
+  return { fx: 0.5 + Math.cos(angle) * rad * xR / 100,
+           fy: 0.5 + Math.sin(angle) * rad * yR / 100 };
+}
+
+function paintBead(el, ci, seed, slot, shape) {
+  const { fx, fy } = slotPos(seed, slot, shape);
+  el.style.left   = (fx * 100) + '%';
+  el.style.top    = (fy * 100) + '%';
+  el.style.width  = shape === 'capsule' ? 'var(--store-bead)' : 'var(--bead-size)';
+  el.style.height = el.style.width;
+  el.style.background = beadGradient(ci);
+}
+
+// Incrementally reconcile one well's DOM with its model (keeps existing
+// elements so beads never flicker; brand-new beads optionally pop in).
+function renderWell(idx, popNew) {
+  const c = wellContainer(idx);
+  if (!c) return;
+  const beads = (BEAD_MODEL && BEAD_MODEL[idx]) || [];
+  const seed  = wellSeed(idx);
+  const shape = wellShape(idx);
+  const want  = new Set(beads.map(b => String(b.id)));
+  c.querySelectorAll('.bead').forEach(el => { if (!want.has(el.dataset.bid)) el.remove(); });
+  beads.forEach((b, slot) => {
+    if (c.querySelector(`.bead[data-bid="${b.id}"]`)) return;
+    const el = document.createElement('div');
+    el.className = 'bead' + (popNew ? ' bead-drop' : '');
+    el.dataset.bid = b.id;
+    paintBead(el, b.ci, seed, slot, shape);
+    c.appendChild(el);
+  });
+}
+
+function renderAllWells() { for (let i = 0; i < 14; i++) renderWell(i); }
 
 // ── Render board only (no status/etc.) ────────────────────────────────────
 function applyBoard(board, validSet, lastPit) {
@@ -117,7 +182,6 @@ function applyBoard(board, validSet, lastPit) {
   myPits.forEach((bi, i) => {
     const el = document.getElementById(`my-pit-${i+1}`);
     el.querySelector('.stone-count').textContent = board[bi];
-    renderBeads(el.querySelector('.beads'), board[bi], `my-pit-${i+1}`, 'circle');
     el.className = 'pit my-pit';
     if (board[bi] === 0) el.classList.add('empty');
     if (validSet && validSet.has(bi)) el.classList.add('valid');
@@ -128,7 +192,6 @@ function applyBoard(board, validSet, lastPit) {
   oppPits.forEach((bi, i) => {
     const el = document.getElementById(`opp-pit-${i+1}`);
     el.querySelector('.stone-count').textContent = board[bi];
-    renderBeads(el.querySelector('.beads'), board[bi], `opp-pit-${i+1}`, 'circle');
     el.className = 'pit';
     if (board[bi] === 0) el.classList.add('empty');
     if (bi === lastPit) el.classList.add('last-moved');
@@ -136,10 +199,12 @@ function applyBoard(board, validSet, lastPit) {
 
   document.getElementById('my-store-count').textContent  = board[myStoreIdx()];
   document.getElementById('opp-store-count').textContent = board[oppStoreIdx()];
-  renderBeads(document.getElementById('my-store-beads'),  board[myStoreIdx()],  'my-store',  'capsule');
-  renderBeads(document.getElementById('opp-store-beads'), board[oppStoreIdx()], 'opp-store', 'capsule');
   document.getElementById('my-score').textContent        = board[myStoreIdx()];
   document.getElementById('opp-score').textContent       = board[oppStoreIdx()];
+
+  // Keep bead identities in sync with the authoritative counts, then paint.
+  reconcileModel(board);
+  renderAllWells();
 }
 
 // ── Full render (board + status) ───────────────────────────────────────────
@@ -337,56 +402,149 @@ function distributionPath(board, player, pit) {
   return path;
 }
 
+// ── Flying-bead overlay ─────────────────────────────────────────────────────
+const FLY_MS = 230;            // keep in sync with .bead-fly transition
+let flyLayer = null;
+
+function ensureFlyLayer() {
+  const wrap = document.getElementById('board-wrapper');
+  if (!wrap) return null;
+  flyLayer = document.getElementById('bead-fly-layer');
+  if (!flyLayer) {
+    flyLayer = document.createElement('div');
+    flyLayer.id = 'bead-fly-layer';
+    wrap.appendChild(flyLayer);
+  }
+  return flyLayer;
+}
+
+// Pixel point (within the fly layer) for a well's centre (slot < 0) or a
+// specific slot. Computed live so it survives layout/resize between moves.
+function wellPointPx(idx, slot) {
+  const c     = wellContainer(idx);
+  const layer = flyLayer || ensureFlyLayer();
+  if (!c || !layer) return { x: 0, y: 0 };
+  const cr = c.getBoundingClientRect();
+  const lr = layer.getBoundingClientRect();
+  let fx = 0.5, fy = 0.5;
+  if (slot >= 0) { const p = slotPos(wellSeed(idx), slot, wellShape(idx)); fx = p.fx; fy = p.fy; }
+  return { x: cr.left - lr.left + cr.width * fx,
+           y: cr.top  - lr.top  + cr.height * fy };
+}
+
+// Animate one bead (carrying its colour) from `from` to `to`, then resolve.
+function flyBead(ci, from, to) {
+  return new Promise(resolve => {
+    const layer = flyLayer || ensureFlyLayer();
+    if (!layer) return resolve();
+    const el = document.createElement('div');
+    el.className = 'bead bead-fly';
+    el.style.background = beadGradient(ci);
+    el.style.transform  = `translate(${from.x}px, ${from.y}px) translate(-50%, -50%)`;
+    layer.appendChild(el);
+    // Two rAFs to guarantee the start transform is committed before we change it.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.style.transform = `translate(${to.x}px, ${to.y}px) translate(-50%, -50%)`;
+    }));
+    let done = false;
+    const finish = () => { if (done) return; done = true; el.remove(); resolve(); };
+    el.addEventListener('transitionend', finish, { once: true });
+    setTimeout(finish, FLY_MS + 140);
+  });
+}
+
+// Live count chip + score update for a single well.
+function setWellCount(idx, n) {
+  if (idx === myStoreIdx())  { document.getElementById('my-store-count').textContent  = n;
+                               document.getElementById('my-score').textContent        = n; return; }
+  if (idx === oppStoreIdx()) { document.getElementById('opp-store-count').textContent = n;
+                               document.getElementById('opp-score').textContent       = n; return; }
+  const el = pitEl(idx);
+  if (el) { el.querySelector('.stone-count').textContent = n; el.classList.toggle('empty', n === 0); }
+}
+
+function pulseWell(idx) {
+  const el = pitEl(idx);
+  if (el) { el.classList.add('landing'); setTimeout(() => el.classList.remove('landing'), 240); return; }
+  const storeEl = idx === myStoreIdx()  ? document.getElementById('my-store-el')
+                : idx === oppStoreIdx() ? document.getElementById('opp-store-el') : null;
+  if (storeEl) { storeEl.classList.add('store-pulse'); setTimeout(() => storeEl.classList.remove('store-pulse'), 260); }
+}
+
+function flashWell(idx) {
+  const el = pitEl(idx);
+  if (el) { el.classList.add('capture-flash'); setTimeout(() => el.classList.remove('capture-flash'), 520); }
+}
+
 async function animateMove(boardBefore, lastMove, finalState) {
   const version = animationVersion;
+  const alive = () => version === animationVersion;
   const { player, pit, captured } = lastMove;
-  const isStillCurrentAnimation = () => version === animationVersion;
+  const playerStore = player === 0 ? P1_STORE : P2_STORE;
 
-  const board = [...boardBefore];
-  const path  = distributionPath(board, player, pit);
+  ensureFlyLayer();
+  // Make sure identities reflect the pre-move board (usually already true).
+  reconcileModel(boardBefore);
+  renderAllWells();
 
-  // Empty the source pit
-  board[pit] = 0;
-  applyBoard(board, null, null);
-  await sleep(200);
-  if (!isStillCurrentAnimation()) return;
+  const path = distributionPath(boardBefore, player, pit);
 
-  // Drop one stone at a time
-  for (const dest of path) {
-    board[dest]++;
-    applyBoard(board, null, dest);
+  // 1) Scoop every bead out of the source pit (they're now "in hand").
+  const hand   = BEAD_MODEL[pit].splice(0);
+  const origin = wellPointPx(pit, -1);
+  renderWell(pit);
+  setWellCount(pit, 0);
+  pulseWell(pit);
+  await sleep(170);
+  if (!alive()) return;
 
-    const el = pitEl(dest);
-    if (el) {
-      el.classList.add('landing');
-      await sleep(300);
-      el.classList.remove('landing');
-    } else {
-      const storeEl = dest === myStoreIdx()
-        ? document.getElementById('my-store-el')
-        : document.getElementById('opp-store-el');
-      storeEl.style.borderColor = 'var(--gold)';
-      await sleep(300);
-      storeEl.style.borderColor = '';
-    }
-    if (!isStillCurrentAnimation()) return;
+  // 2) Sow one bead at a time; each bead keeps its colour as it travels.
+  for (let s = 0; s < path.length && hand.length; s++) {
+    const dest = path[s];
+    const bead = hand.shift();
+    const to   = wellPointPx(dest, BEAD_MODEL[dest].length);
+    await flyBead(bead.ci, origin, to);
+    if (!alive()) return;
+    BEAD_MODEL[dest].push(bead);
+    renderWell(dest);
+    setWellCount(dest, BEAD_MODEL[dest].length);
+    pulseWell(dest);
+    await sleep(60);
+    if (!alive()) return;
   }
 
-  // If a capture happened, flash both pits then clear them
+  // 3) Capture: the landing pit + its opposite empty into the player's store,
+  //    each captured bead flying across while keeping its colour.
   if (captured) {
-    const lastDest  = path[path.length - 1];
-    const opp       = OPPOSITE[lastDest];
-    await sleep(250);
-    const captureEls = [pitEl(lastDest), pitEl(opp)].filter(Boolean);
-    captureEls.forEach(el => el.classList.add('capture-flash'));
-    await sleep(500);
-    captureEls.forEach(el => el.classList.remove('capture-flash'));
-    if (!isStillCurrentAnimation()) return;
+    const lastDest = path[path.length - 1];
+    const opp      = OPPOSITE[lastDest];
+    flashWell(lastDest); flashWell(opp);
+    await sleep(440);
+    if (!alive()) return;
+
+    const sources = [[lastDest, BEAD_MODEL[lastDest].splice(0)],
+                     [opp,      BEAD_MODEL[opp].splice(0)]];
+    [lastDest, opp].forEach(i => { renderWell(i); setWellCount(i, 0); });
+
+    for (const [srcIdx, beads] of sources) {
+      const from = wellPointPx(srcIdx, -1);
+      for (const bead of beads) {
+        const to = wellPointPx(playerStore, BEAD_MODEL[playerStore].length);
+        await flyBead(bead.ci, from, to);
+        if (!alive()) return;
+        BEAD_MODEL[playerStore].push(bead);
+        renderWell(playerStore);
+        setWellCount(playerStore, BEAD_MODEL[playerStore].length);
+        pulseWell(playerStore);
+        await sleep(40);
+        if (!alive()) return;
+      }
+    }
   }
 
-  await sleep(150);
-  if (!isStillCurrentAnimation()) return;
-  renderState(finalState);
+  await sleep(140);
+  if (!alive()) return;
+  renderState(finalState);   // reconciles to the authoritative final board
 
   if (animQueue.length > 0) {
     const next = animQueue.shift();
