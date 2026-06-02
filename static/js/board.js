@@ -74,10 +74,13 @@ function beadHash(key) {
 }
 
 function styleBead(bead, seedKey, i, shape) {
-  const col   = BEAD_COLORS[Math.floor(beadHash(`${seedKey}|c|${i}`) * BEAD_COLORS.length) % BEAD_COLORS.length];
-  const angle = beadHash(`${seedKey}|a|${i}`) * Math.PI * 2;
-  const rad   = Math.sqrt(beadHash(`${seedKey}|r|${i}`));   // uniform over disk
-  const jit   = 0.82 + beadHash(`${seedKey}|s|${i}`) * 0.42;
+  // Colour by position: a per-well offset then cycle the palette, so every
+  // well shows a balanced, deterministic spread that stays consistent as
+  // stones are sown from pit to pit.
+  const offset = Math.floor(beadHash(`${seedKey}|c`) * BEAD_COLORS.length);
+  const col    = BEAD_COLORS[(offset + i) % BEAD_COLORS.length];
+  const angle  = beadHash(`${seedKey}|a|${i}`) * Math.PI * 2;
+  const rad    = Math.sqrt(beadHash(`${seedKey}|r|${i}`));   // uniform over disk
 
   let xR, yR, base;
   if (shape === 'capsule') { xR = 24; yR = 40; base = 'var(--store-bead)'; }
@@ -85,8 +88,8 @@ function styleBead(bead, seedKey, i, shape) {
 
   bead.style.left   = (50 + Math.cos(angle) * rad * xR) + '%';
   bead.style.top    = (50 + Math.sin(angle) * rad * yR) + '%';
-  bead.style.width  = `calc(${base} * ${jit.toFixed(3)})`;
-  bead.style.height = bead.style.width;
+  bead.style.width  = base;          // all beads the same size
+  bead.style.height = base;
   bead.style.background = `radial-gradient(circle at 32% 28%, ${col[0]}, ${col[1]} 58%, ${col[2]} 100%)`;
 }
 
